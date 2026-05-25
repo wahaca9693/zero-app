@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Fira Code", monospace;
+  
+  --color-yt-red: #FF0000;
+  --color-yt-dark: #0F0F0F;
+  --color-yt-dark-card: #212121;
+  --color-yt-light-gray: #F2F2F2;
+  --color-yt-border: #E5E5E5;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-yt-dark);
+  color: white;
+  direction: rtl; /* Set default RTL for Arabic support */
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F0F0F;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3F3F3F;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
