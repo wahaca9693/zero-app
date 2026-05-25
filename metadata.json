@@ -1,5 +1,5 @@
 {
-  "name": "YouTube Clone & Downloader",
+  "name": "YouTLibre",
   "description": "منصة يوتيوب كاملة مع ميزة تحميل الفيديوهات لمشاهدتها بدون إنترنت بشكل كامل.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

@@ -354,6 +354,7 @@ export default function App() {
     } catch (err) {
       console.error(err);
       showToast('❌ فشل حذف الفيديو. حاول مرة أخرى.');
+      throw err;
     }
   };
 

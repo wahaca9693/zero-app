@@ -191,12 +191,15 @@ export default function VideoPlayer({
     }
   };
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDeleteVideo = async () => {
     if (confirm('هل أنت متأكد من رغبتك في حذف هذا الفيديو نهائياً من قاعدة البيانات والتخزين؟ لا يمكن التراجع عن هذه الخطوة!')) {
       if (isDownloading) {
         alert('لا يمكن حذف الفيديو أثناء تحميله للكمبيوتر!');
         return;
       }
+      setIsDeleting(true);
       try {
         if (onDelete) {
           await onDelete(video.id);
@@ -204,14 +207,15 @@ export default function VideoPlayer({
           await deleteVideo(video.id);
         }
         
-        // Remove v=... from URL
-        const newUrl = window.location.origin + window.location.pathname;
-        window.history.pushState({ path: newUrl }, '', newUrl);
-
-        onGoBack();
+        alert('✅ تم مسح الفيديو بنجاح من قاعدة البيانات.');
+        
+        // Remove v=... from URL and reload context completely to ensure feed refreshes for all users
+        window.location.href = window.location.origin + window.location.pathname;
+        
       } catch (err) {
         console.error(err);
         alert('❌ حدث خطأ أثناء محاولة حذف الفيديو. تأكد من أنك صاحب الفيديو.');
+        setIsDeleting(false);
       }
     }
   };
@@ -412,10 +416,11 @@ export default function VideoPlayer({
           {auth.currentUser && (video as any).userId === auth.currentUser.uid && (
             <button
               onClick={handleDeleteVideo}
-              className="flex items-center gap-1.5 px-3.5 h-9 bg-red-900 border border-red-500/30 hover:bg-red-700 text-white rounded-full text-xs shrink-0 font-bold transition-colors select-none cursor-pointer"
+              disabled={isDeleting}
+              className={`flex items-center gap-1.5 px-3.5 h-9 bg-red-900 border border-red-500/30 text-white rounded-full text-xs shrink-0 font-bold transition-colors select-none ${isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700 cursor-pointer'}`}
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>أمسح الفيديو حقاً</span>
+              {isDeleting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+              <span>{isDeleting ? 'جاري المسح...' : 'أمسح الفيديو حقاً'}</span>
             </button>
           )}
 
