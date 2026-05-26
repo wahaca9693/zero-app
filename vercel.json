@@ -1,15 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/api", "destination": "/api/index.ts" }
-  ],
-  "functions": {
-    "api/index.ts": {
-      "runtime": "@vercel/node@2.15.1",
-      "maxDuration": 60
-    }
-  },
-  "framework": null,
-  "buildCommand": "echo 'API only build'",
-  "outputDirectory": "."
+    { "source": "/api/(.*)", "destination": "/api" }
+  ]
 }
