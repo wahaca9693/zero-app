@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, MessageSquare, Share2, Download, Check, Volume2, VolumeX, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { Video, DownloadedItem } from '../types';
+import { toggleLikeVideo, getSimpleAuthUser } from '../services/db';
+import { auth } from '../lib/firebase';
 
 interface ShortsViewProps {
   shorts: Video[];
@@ -8,6 +10,7 @@ interface ShortsViewProps {
   onDownload: (v: Video) => void;
   onDeleteDownload: (id: string) => void;
   isOffline: boolean;
+  currentUser?: { user_id: string; username: string; email: string } | null;
 }
 
 export default function ShortsView({
@@ -15,7 +18,8 @@ export default function ShortsView({
   downloadStatusList,
   onDownload,
   onDeleteDownload,
-  isOffline
+  isOffline,
+  currentUser
 }: ShortsViewProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
@@ -61,12 +65,21 @@ export default function ShortsView({
     }
   };
 
-  const handleLike = (id: string) => {
+  const handleLike = async (id: string) => {
+    const user = currentUser || (auth.currentUser ? { user_id: auth.currentUser.uid } : null) || getSimpleAuthUser();
+    if (!user) {
+      alert('⚠️ يرجى تسجيل الدخول أولاً!');
+      return;
+    }
+    
+    try {
+      await toggleLikeVideo(id, user.user_id);
+    } catch (err) {}
+    
     setLikedShorts(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
-    // cancel dislike if pre-active
     setDislikedShorts(prev => ({ ...prev, [id]: false }));
   };
 

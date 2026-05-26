@@ -37,6 +37,79 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 app.use(express.json());
+
+// Helper: Get real IP behind proxy
+function getRealIp(req: express.Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return (forwarded as string).split(',')[0].trim();
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+// Helper: Detect VPN/Proxy usage
+async function detectVPN(ip: string, userAgent: string): Promise<{isVPN: boolean, message: string}> {
+  // Allow localhost/private IPs
+  if (ip.startsWith('127.') || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+    return { isVPN: false, message: '' };
+  }
+  
+  // Check common VPN/Proxy indicators in headers
+  if (userAgent.includes('Opera') || userAgent.includes('Nord') || 
+      userAgent.includes('ExpressVPN') || userAgent.includes(' ProtonVPN') ||
+      userAgent.includes('TunnelBear') || userAgent.includes('Hotspot Shield') ||
+      userAgent.includes('CyberGhost') || userAgent.includes('HideMyAss') ||
+      userAgent.includes('Surfshark') || userAgent.includes('PureVPN')) {
+    return { isVPN: true, message: 'تم الكشف عن استخدام VPN. يرجى إيقاف VPN لاستخدام الموقع.' };
+  }
+  
+  return { isVPN: false, message: '' };
+}
+
+// Middleware: Block VPN and one account per IP
+app.use(async (req, res, next) => {
+  const clientIp = getRealIp(req);
+  const userAgent = req.headers['user-agent'] || '';
+  (req as any).clientIp = clientIp;
+  
+  // Skip middleware for existing server routes that need DB
+  if (!db) {
+    return next();
+  }
+  
+  // Skip for non-POST user routes (login/update)
+  if (req.path.endsWith('/users') && req.method === 'PUT') {
+    return next();
+  }
+  
+  // Check for VPN usage
+  const vpnCheck = await detectVPN(clientIp, userAgent);
+  if (vpnCheck.isVPN) {
+    return res.status(403).json({ 
+      error: vpnCheck.message,
+      vpnDetected: true,
+      instruction: 'يرجى إيقاف VPN ثم أعد تحميل الصفحة'
+    });
+  }
+  
+  // Check if requesting account creation - enforce one account per IP
+  if (req.path.includes('register') || (req.path === '/api/v1/users' && req.method === 'POST')) {
+    try {
+      const existingUser = await db.execute({
+        sql: 'SELECT uid, ipAddress FROM users WHERE ipAddress = ?',
+        args: [clientIp]
+      });
+      if (existingUser.rows.length > 0) {
+        return res.status(403).json({ 
+          error: 'تم إنشاء حساب واحد بالفعل من هذا الاتصال. لا يمكن إنشاء حسابات أخرى.',
+          vpnDetected: false
+        });
+      }
+    } catch (e) {
+      // Continue if table doesn't exist yet
+    }
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
     console.log(`[API] ${req.method} ${req.path}`);
@@ -48,6 +121,7 @@ app.use('/uploads', express.static(uploadsDir));
 // Initialize Database Tables
 async function initDB() {
   try {
+    // Users table - with IP tracking and one account per IP
     await db.execute(`
       CREATE TABLE IF NOT EXISTS users (
         uid TEXT PRIMARY KEY,
@@ -56,9 +130,15 @@ async function initDB() {
         avatar TEXT,
         banner TEXT,
         description TEXT,
-        subscriptions TEXT
+        subscriptions TEXT,
+        ipAddress TEXT,
+        createdAt INTEGER,
+        lastLogin INTEGER,
+        isVPN INTEGER DEFAULT 0
       )
     `);
+    
+    // Videos table - with real view/like tracking
     await db.execute(`
       CREATE TABLE IF NOT EXISTS videos (
         id TEXT PRIMARY KEY,
@@ -81,6 +161,19 @@ async function initDB() {
         thumbPath TEXT
       )
     `);
+    
+    // Views table - track each view with IP and timestamp
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS video_views (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        videoId TEXT,
+        ipAddress TEXT,
+        viewedAt INTEGER,
+       userAgent TEXT
+      )
+    `);
+    
+    // Comments table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS comments (
         id TEXT PRIMARY KEY,
@@ -255,16 +348,22 @@ app.post('/api/v1/users/:uid/update', upload.fields([{ name: 'avatar' }, { name:
 app.post('/api/v1/videos/:id/like', async (req, res) => {
   try {
     const { id } = req.params;
-    const { uid } = req.body;
+    const { uid, ipAddress } = req.body;
+    const clientIp = ipAddress || req.ip || req.socket.remoteAddress || 'unknown';
     const vRes = await db.execute({ sql: 'SELECT * FROM videos WHERE id = ?', args: [id] });
     if (vRes.rows.length === 0) return res.status(404).json({ error: 'Video not found' });
 
     const video = vRes.rows[0];
     let likes = JSON.parse(video.likes as string || '[]') as string[];
-    if (likes.includes(uid)) {
-      likes = likes.filter(l => l !== uid);
+    
+    // Toggle like/unlike
+    const userKey = uid || clientIp;
+    if (likes.includes(userKey)) {
+      // Unlike - remove
+      likes = likes.filter(l => l !== userKey);
     } else {
-      likes.push(uid);
+      // Like - add
+      likes.push(userKey);
     }
 
     await db.execute({
@@ -272,7 +371,7 @@ app.post('/api/v1/videos/:id/like', async (req, res) => {
       args: [JSON.stringify(likes), likes.length, id]
     });
 
-    res.json({ hasLiked: likes.includes(uid), totalLikes: likes.length });
+    res.json({ hasLiked: likes.includes(userKey), totalLikes: likes.length });
   } catch (err) {
     res.status(500).json({ error: (err as any).message });
   }
@@ -324,10 +423,32 @@ app.post('/api/v1/videos/:id/comments', async (req, res) => {
 app.post('/api/v1/videos/:id/view', async (req, res) => {
   try {
     const { id } = req.params;
-    await db.execute({
-      sql: 'UPDATE videos SET viewsCount = viewsCount + 1 WHERE id = ?',
-      args: [id]
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const now = Date.now();
+    
+    // Check if this IP already viewed this video in last hour (anti-fraud)
+    const existingView = await db.execute({
+      sql: `SELECT * FROM video_views WHERE videoId = ? AND ipAddress = ? AND viewedAt > ?`,
+      args: [id, clientIp, now - 3600000] // 1 hour cooldown
     });
+    
+    if (existingView.rows.length === 0) {
+      // New valid view - record it
+      await db.execute({
+        sql: 'INSERT INTO video_views (videoId, ipAddress, viewedAt, userAgent) VALUES (?, ?, ?, ?)',
+        args: [id, clientIp, now, userAgent]
+      });
+      
+      // Update videos set count based on unique IPs
+      await db.execute({
+        sql: `UPDATE videos SET viewsCount = (
+          SELECT COUNT(DISTINCT ipAddress) FROM video_views WHERE videoId = ?
+        ) WHERE id = ?`,
+        args: [id, id]
+      });
+    }
+    
     const res2 = await db.execute({ sql: 'SELECT viewsCount FROM videos WHERE id = ?', args: [id] });
     res.json({ viewsCount: res2.rows[0]?.viewsCount || 0 });
   } catch (err) {
@@ -338,10 +459,20 @@ app.post('/api/v1/videos/:id/view', async (req, res) => {
 app.delete('/api/v1/videos/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const { uid } = req.body as { uid?: string };
     const vRes = await db.execute({ sql: 'SELECT * FROM videos WHERE id = ?', args: [id] });
     if (vRes.rows.length === 0) return res.status(404).json({ error: 'Video not found' });
     
     const video = vRes.rows[0];
+    
+    // Server-side ownership check - only owner can delete
+    if (uid && video.userId !== uid) {
+      return res.status(403).json({ error: 'ليس لديك إذن لحذف هذا الفيديو' });
+    }
+    if (!uid) {
+      return res.status(401).json({ error: 'يرجى تسجيل الدخول أولاً' });
+    }
+    
     // Delete files if they exist
     if (video.videoPath) {
       const p = path.join(process.cwd(), 'uploads', video.videoPath as string);

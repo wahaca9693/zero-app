@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { X, Upload, Check, Link, Sparkles, AlertTriangle, FileVideo, ImageIcon } from 'lucide-react';
 import { Video } from '../types';
-import { uploadVideo, importVideo } from '../services/db';
-import { auth } from '../lib/firebase';
+import { uploadVideo, importVideo, getSimpleAuthUser } from '../services/db';
 
 interface UploadModalProps {
   onClose: () => void;
   onSave: (v: Video) => void;
+  currentUser?: { user_id: string; username: string; email: string } | null;
 }
 
 const SAMPLE_MP4S = [
@@ -146,7 +146,8 @@ export default function UploadModal({ onClose, onSave }: UploadModalProps) {
     setUploading(true);
 
     try {
-      if (!auth.currentUser) {
+      // Use the passed currentUser prop instead of Firebase auth
+      if (!currentUser || !currentUser.user_id) {
         setError('يجب تسجيل الدخول لنشر الفيديو');
         setUploading(false);
         return;
@@ -154,7 +155,7 @@ export default function UploadModal({ onClose, onSave }: UploadModalProps) {
 
       let videoData;
       if (uploadType === 'file') {
-        videoData = await uploadVideo(auth.currentUser.uid, {
+        videoData = await uploadVideo(currentUser.user_id, {
           title: title.trim(),
           description: desc.trim(),
           category,
@@ -165,7 +166,7 @@ export default function UploadModal({ onClose, onSave }: UploadModalProps) {
         }, videoFile, thumbnailFile);
       } else {
         // Handle URL or YouTube imports using the server-side downloader
-        videoData = await importVideo(auth.currentUser.uid, {
+        videoData = await importVideo(currentUser.user_id, {
           title: title.trim(),
           description: desc.trim(),
           category,

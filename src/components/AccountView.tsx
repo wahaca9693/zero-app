@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Lock, Shield, Sparkles, LogOut, Film, Trash2, Heart, History, Video, Calendar, ArrowLeft, Wifi, CloudOff, Edit3, Camera, Image, Save, X, RefreshCw } from 'lucide-react';
 
-import { registerUser, loginUser, updateUserProfile, getUserProfile } from '../services/db';
+import { registerUser, loginUser, updateUserProfile, getUserProfile, simpleTursoRegister, simpleTursoLogin, simpleTursoLogout, getSimpleAuthUser } from '../services/db';
 import { wipeDatabase } from '../utils/wipeDatabase';
 
 const AVATAR_PRESETS = [
@@ -80,6 +80,7 @@ export default function AccountView({
     setSuccessMsg(null);
   };
 
+  // Use simple Turso-based authentication
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -88,18 +89,16 @@ export default function AccountView({
 
     try {
       if (isRegister) {
-        const user = await registerUser(email, password, username);
+        const user = await simpleTursoRegister(email, username);
         setSuccessMsg('🎉 تم إنشاء حسابك بنجاح! جاري تحويلك...');
         setTimeout(async () => {
-          const profile = await getUserProfile(user.uid);
-          onLoginSuccess({ user_id: user.uid, ...profile }, '');
+          onLoginSuccess({ user_id: user.uid, username: user.username, email: user.email }, '');
         }, 1500);
       } else {
-        const user = await loginUser(email, password);
+        const user = await simpleTursoLogin(email, password);
         setSuccessMsg('✅ تم تسجيل الدخول بنجاح! مرحباً بعودتك.');
         setTimeout(async () => {
-          const profile = await getUserProfile(user.uid);
-          onLoginSuccess({ user_id: user.uid, ...profile }, '');
+          onLoginSuccess({ user_id: user.uid, username: user.username, email: user.email }, '');
         }, 1000);
       }
     } catch (err: any) {

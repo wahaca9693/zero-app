@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ThumbsUp, ThumbsDown, Bookmark, ChevronLeft, X, Download, Check, Trash2, Share2, CornerUpLeft, MoreVertical, WifiOff, RefreshCw, Send, Sparkles } from 'lucide-react';
 import { 
-  incrementView, toggleLikeVideo, getComments, addComment, toggleSubscriptionToUser, deleteVideo 
+  incrementView, toggleLikeVideo, getComments, addComment, toggleSubscriptionToUser, deleteVideo, getSimpleAuthUser 
 } from '../services/db';
 import { auth } from '../lib/firebase';
 import { Video, Comment, DownloadedItem } from '../types';
@@ -31,6 +31,8 @@ interface VideoPlayerProps {
   onToggleSave?: (videoId: string) => void;
   onDelete?: (videoId: string) => void;
   isSaved?: boolean;
+  // Current user for simple auth
+  currentUser?: { user_id: string; username: string; email: string } | null;
 }
 
 export default function VideoPlayer({
@@ -47,7 +49,8 @@ export default function VideoPlayer({
   onChannelClick,
   onToggleSave,
   onDelete,
-  isSaved
+  isSaved,
+  currentUser
 }: VideoPlayerProps) {
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
@@ -112,13 +115,14 @@ export default function VideoPlayer({
   }, [video.id, isOffline]);
 
   const handleLike = async () => {
-    if (!auth.currentUser) {
-      alert('⚠️ يرجى تسجيل الدخول أولاً لتسجيل الإعجاب بالفيديوهات حياً!');
+    const user = currentUser || (auth.currentUser ? { user_id: auth.currentUser.uid } : null) || getSimpleAuthUser();
+    if (!user) {
+      alert('⚠️ يرجى تسجيل الدخول أولاً لتسجيل الإعجاب!');
       return;
     }
 
     try {
-      const res = await toggleLikeVideo(video.id, auth.currentUser.uid);
+      const res = await toggleLikeVideo(video.id, user.user_id);
       if (res) {
         setLiked(res.hasLiked);
         if (res.hasLiked) setDisliked(false);
@@ -133,35 +137,33 @@ export default function VideoPlayer({
   };
 
   const handleDislike = async () => {
-    if (!auth.currentUser) {
-      alert('⚠️ يرجى تسجيل الدخول أولاً للمشاركة برأيك!');
+    const user = currentUser || (auth.currentUser ? { user_id: auth.currentUser.uid } : null) || getSimpleAuthUser();
+    if (!user) {
+      alert('⚠️ يرجى تسجيل الدخول أولاً!');
       return;
     }
     
-    // Toggle internal dislike state
     const nextDisliked = !disliked;
     setDisliked(nextDisliked);
     
-    // Mutual exclusivity
     if (nextDisliked && liked) {
-      // Opt out of like
-      await handleLike(); // This will toggle the like off via API
+      await handleLike();
     }
   };
 
   const handleSubscribe = async () => {
-    if (!auth.currentUser) {
-      alert('⚠️ يرجى تسجيل الدخول للاشتراك بالقنوات');
+    const user = currentUser || (auth.currentUser ? { user_id: auth.currentUser.uid } : null) || getSimpleAuthUser();
+    if (!user) {
+      alert('⚠️ يرجى تسجيل الدخول للاشتراك!');
       return;
     }
     const nextSub = !isSubscribed;
 
-    // Optimistically update local states
     setIsSubscribed(nextSub);
     localStorage.setItem(`sub_${video.channelName}`, nextSub ? 'true' : 'false');
 
     try {
-      const subs = await toggleSubscriptionToUser(auth.currentUser.uid, video.channelName);
+      const subs = await toggleSubscriptionToUser(user.user_id, video.channelName);
       if (subs) {
         setIsSubscribed(subs.includes(video.channelName));
         if (onUpdateChannelSubscription) {
@@ -176,27 +178,39 @@ export default function VideoPlayer({
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCommentVal.trim()) return;
-    if (!auth.currentUser) {
-      alert('يرجى تسجيل الدخول لتتمكن من إضافة تعليق');
+    const user = currentUser || (auth.currentUser ? { user_id: auth.currentUser.uid } : null) || getSimpleAuthUser();
+    if (!user) {
+      alert('يرجى تسجيل الدخول للتعليق');
       return;
     }
 
     try {
-      const newComment = await addComment(video.id, auth.currentUser.uid, newCommentVal.trim());
+      const newComment = await addComment(video.id, user.user_id, newCommentVal.trim());
       setComments(prev => [newComment as any, ...prev]);
       setNewCommentVal('');
     } catch (err) {
       console.error(err);
-      alert('فشل التعليق. يرجى التحقق من اتصال قاعدة البيانات.');
+      alert('فشل التعليق.');
     }
   };
 
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeleteVideo = async () => {
-    if (confirm('هل أنت متأكد من رغبتك في حذف هذا الفيديو نهائياً من قاعدة البيانات والتخزين؟ لا يمكن التراجع عن هذه الخطوة!')) {
+    const user = currentUser || (auth.currentUser ? { user_id: auth.currentUser.uid } : null) || getSimpleAuthUser();
+    if (!user) {
+      alert('⚠️ يرجى تسجيل الدخول لحذف الفيديو');
+      return;
+    }
+
+    if (video.userId !== user.user_id) {
+      alert('⚠️ ليس لديك إذن لحذف هذا الفيديو');
+      return;
+    }
+
+    if (confirm('هل أنت متأكد من حذف هذا الفيديو نهائياً؟')) {
       if (isDownloading) {
-        alert('لا يمكن حذف الفيديو أثناء تحميله للكمبيوتر!');
+        alert('لا يمكن الحذف أثناء التحميل!');
         return;
       }
       setIsDeleting(true);
@@ -204,17 +218,18 @@ export default function VideoPlayer({
         if (onDelete) {
           await onDelete(video.id);
         } else {
-          await deleteVideo(video.id);
+          await deleteVideo(video.id, { user_id: user.user_id });
         }
         
-        alert('✅ تم مسح الفيديو بنجاح من قاعدة البيانات.');
+        alert('✅ تم الحذف بنجاح');
         
-        // Remove v=... from URL and reload context completely to ensure feed refreshes for all users
-        window.location.href = window.location.origin + window.location.pathname;
+        if (onGoBack) {
+          onGoBack();
+        }
         
       } catch (err) {
         console.error(err);
-        alert('❌ حدث خطأ أثناء محاولة حذف الفيديو. تأكد من أنك صاحب الفيديو.');
+        alert('❌ فشل الحذف');
         setIsDeleting(false);
       }
     }

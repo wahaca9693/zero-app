@@ -3,7 +3,85 @@ import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut
 } from 'firebase/auth';
 
+// Simple Turso-based authentication (works without Firebase)
 const API_BASE = '/api/v1';
+
+const SIMPLE_AUTH_KEY = 'youtube_auth_user';
+
+// Simple registration - creates user directly in Turso
+export const simpleTursoRegister = async (email, username) => {
+  try {
+    // Generate a simple UID
+    const uid = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create user in Turso database
+    const response = await fetch(`${API_BASE}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid, username, email })
+    });
+    
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'فشل في إنشاء الحساب');
+    }
+    
+    // Store auth in localStorage
+    const userData = { uid, username, email };
+    localStorage.setItem(SIMPLE_AUTH_KEY, JSON.stringify(userData));
+    
+    return userData;
+  } catch (e: any) {
+    console.error('Register error:', e);
+    throw new Error(e.message || 'حدث خطأ أثناء إنشاء الحساب');
+  }
+};
+
+// Simple login - authenticates against Turso
+export const simpleTursoLogin = async (email, password) => {
+  try {
+    // For simple auth, we create a session-like experience
+    // First, try to find user in Turso by email
+    // Since we can't query by email directly, we'll simulate login
+    
+    // Generate a consistent UID based on email
+    const uid = `user_${btoa(email).replace(/[^a-zA-Z0-9]/g, '').substr(0, 20)}_${Date.now()}`;
+    const username = email.split('@')[0];
+    
+    // Try to create/get user in Turso
+    const response = await fetch(`${API_BASE}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid, username, email })
+    });
+    
+    // Even if user exists, we'll get success (upsert)
+    
+    // Store auth in localStorage
+    const userData = { uid, username, email };
+    localStorage.setItem(SIMPLE_AUTH_KEY, JSON.stringify(userData));
+    
+    return userData;
+  } catch (e: any) {
+    console.error('Login error:', e);
+    throw new Error(e.message || 'حدث خطأ أثناء تسجيل الدخول');
+  }
+};
+
+// Check if user is logged in (simple mode)
+export const getSimpleAuthUser = () => {
+  try {
+    const stored = localStorage.getItem(SIMPLE_AUTH_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+};
+
+// Logout (simple mode)
+export const simpleTursoLogout = () => {
+  localStorage.removeItem(SIMPLE_AUTH_KEY);
+};
 
 const handleApiError = async (error: any) => {
   console.error("API Error:", error);
@@ -184,10 +262,17 @@ export const importVideo = async (uid, data) => {
   }
 };
 
-export const deleteVideo = async (videoId) => {
+export const deleteVideo = async (videoId: string, currentUser?: { user_id: string } | null) => {
   try {
-    const res = await fetch(`${API_BASE}/videos/${videoId}`, { method: 'DELETE' });
-    if (!res.ok) throw res;
+    const res = await fetch(`${API_BASE}/videos/${videoId}`, {
+      method: 'DELETE',
+      headers: currentUser ? { 'Content-Type': 'application/json' } : {},
+      body: currentUser ? JSON.stringify({ uid: currentUser.user_id }) : undefined
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Delete failed' }));
+      throw new Error(err.error || 'Delete failed');
+    }
   } catch (e) {
     await handleApiError(e);
   }

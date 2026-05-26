@@ -9,7 +9,7 @@ import ShortsView from './components/ShortsView';
 import DownloadsView from './components/DownloadsView';
 import UploadModal from './components/UploadModal';
 import AccountView from './components/AccountView';
-import { getVideos, getUserProfile, getUserSubscriptions } from './services/db';
+import { getVideos, getUserProfile, getUserSubscriptions, getSimpleAuthUser } from './services/db';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { 
@@ -83,7 +83,7 @@ export default function App() {
         setSavedVideoIds(localSaved);
 
 
-        // Verify active user authorization on startup
+        // Verify active user authorization on startup (Firebase)
         onAuthStateChanged(auth, async (user) => {
           if (user) {
             let profile = await getUserProfile(user.uid);
@@ -110,6 +110,16 @@ export default function App() {
             setCurrentUser(null);
           }
         });
+
+        // Also check for simple Turso-based auth
+        const simpleUser = getSimpleAuthUser();
+        if (simpleUser) {
+          // Validate user still exists in Turso
+          const profile = await getUserProfile(simpleUser.uid);
+          if (profile) {
+            setCurrentUser({ user_id: simpleUser.uid, username: profile.username, email: profile.email });
+          }
+        }
 
         // Fetch videos from Firebase
         const sVideos = await getVideos();
@@ -393,6 +403,7 @@ export default function App() {
         <UploadModal 
           onClose={() => setShowUploadModal(false)}
           onSave={handleSaveUploadedVideo}
+          currentUser={currentUser}
         />
       )}
 
@@ -496,6 +507,7 @@ export default function App() {
                   setSelectedVideo(null);
                   setSelectedChannel(chanName);
                 }}
+                currentUser={currentUser}
               />
             </div>
           ) : selectedChannel ? (
@@ -681,6 +693,7 @@ export default function App() {
                   onDownload={handleDownloadVideo}
                   onDeleteDownload={handleDeleteDownload}
                   isOffline={isOffline}
+                  currentUser={currentUser}
                 />
               )}
 
