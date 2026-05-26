@@ -1,25 +1,19 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+export default async function handler(req: Request): Promise<Response> {
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
 
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
-  try {
-    const { method, query } = req;
-    const path = Array.isArray(query?.route) ? query.route[0] : (query?.route || "/");
-    
-    // Health check
-    if (path === "/" || path === "") {
-      return res.json({ status: "ok", message: "Zero API running" });
-    }
-
-    return res.json({ error: "Endpoint not found" });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+  const url = new URL(req.url);
+  
+  if (url.pathname === "/api" || url.pathname === "/") {
+    return Response.json({ status: "ok", message: "Zero API running" }, { headers: corsHeaders });
   }
-}
+
+  return Response.json({ error: "Not found" }, { status: 404, headers: corsHeaders });
+};
