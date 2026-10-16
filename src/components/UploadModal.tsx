@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { X, Upload, Check, Link, Sparkles, AlertTriangle, FileVideo, ImageIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  X, UploadCloud, Check, Link2, Globe, Lock, ChevronLeft, ChevronRight,
+  ImageIcon, Loader2, AlertTriangle, Baby, UserCheck, Play,
+} from 'lucide-react';
 import { Video } from '../types';
-import { uploadVideo, importVideo, getSimpleAuthUser } from '../services/db';
+import { stageUpload, stageThumbnail, publishVideo, importVideo, getSimpleAuthUser } from '../services/db';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -9,525 +12,458 @@ interface UploadModalProps {
   currentUser?: { user_id: string; username: string; email: string } | null;
 }
 
-const SAMPLE_MP4S = [
-  {
-    name: 'بث السيارات الرياضية والسوبارو السريعة 🚗',
-    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
-    thumb: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=60'
-  },
-  {
-    name: 'رحلة القطار فوق بحيرات سويسرا الخلابة 🏔️',
-    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    thumb: 'https://images.unsplash.com/photo-1532274402911-5a369e4c4bb5?w=800&auto=format&fit=crop&q=60'
-  }
-];
+type Visibility = 'public' | 'unlisted' | 'private';
 
-// Helper function to extract YouTube video ID from URL
-function getYouTubeId(url: string): string | null {
-  if (!url) return null;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+// Generate 3 real thumbnail options from the video file (YouTube-style)
+async function generateThumbnails(file: File): Promise<string[]> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.muted = true;
+    video.preload = 'auto';
+    video.src = url;
+    const thumbs: string[] = [];
+    const canvas = document.createElement('canvas');
+    canvas.width = 320; canvas.height = 180;
+    const ctx = canvas.getContext('2d');
+
+    video.onloadedmetadata = async () => {
+      const dur = video.duration || 1;
+      for (const frac of [0.25, 0.5, 0.75]) {
+        try {
+          await new Promise<void>((res, rej) => {
+            const to = setTimeout(() => rej(new Error('seek timeout')), 4000);
+            video.onseeked = () => { clearTimeout(to); res(); };
+            video.currentTime = Math.min(dur * frac, Math.max(0, dur - 0.1));
+          });
+          if (ctx) { ctx.drawImage(video, 0, 0, 320, 180); thumbs.push(canvas.toDataURL('image/jpeg', 0.7)); }
+        } catch { /* skip failed frame */ }
+      }
+      URL.revokeObjectURL(url);
+      resolve(thumbs);
+    };
+    video.onerror = () => { URL.revokeObjectURL(url); resolve([]); };
+    setTimeout(() => resolve(thumbs), 12000); // safety
+  });
 }
 
-function formatVideoDuration(dur: number): string {
-  if (!dur || isNaN(dur) || dur === Infinity) return '';
-  const hrs = Math.floor(dur / 3600);
-  const mins = Math.floor((dur % 3600) / 60);
-  const secs = Math.floor(dur % 60);
-  let formatted = '';
-  if (hrs > 0) formatted += (hrs < 10 ? '0' + hrs : hrs) + ':';
-  formatted += (mins < 10 ? '0' + mins : mins) + ':';
-  formatted += (secs < 10 ? '0' + secs : secs);
-  return formatted;
-}
+const STEPS = ['التفاصيل', 'الوضوح', 'تم'];
 
 export default function UploadModal({ onClose, onSave, currentUser }: UploadModalProps) {
+  const [step, setStep] = useState(0); // 0 = select file
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadPct, setUploadPct] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [staged, setStaged] = useState<{ videoPath: string; src: string; thumbPath: string | null; originalName: string } | null>(null);
+
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [category, setCategory] = useState('تقنية');
-  const [duration, setDuration] = useState('');
-  
-  // Choose between file upload, URL inputs, or direct YouTube import
-  const [uploadType, setUploadType] = useState<'file' | 'url' | 'youtube'>('file');
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [audience, setAudience] = useState<'kids' | 'notkids'>('notkids');
+  const [visibility, setVisibility] = useState<Visibility>('public');
 
-  const [videoUrl, setVideoUrl] = useState('');
-  const [thumbUrl, setThumbUrl] = useState('');
+  const [thumbOptions, setThumbOptions] = useState<string[]>([]);
+  const [thumbLoading, setThumbLoading] = useState(false);
+  const [selectedThumb, setSelectedThumb] = useState<number>(0);
+  const [customThumbFile, setCustomThumbFile] = useState<File | null>(null);
+  const [customThumbUrl, setCustomThumbUrl] = useState<string | null>(null);
 
-  // YouTube Specific States
-  const [ytInputUrl, setYtInputUrl] = useState('');
-  const [fetchingYt, setFetchingYt] = useState(false);
-
-  const [uploading, setUploading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState<Video | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto scrape metadata from YouTube oEmbed protocol
-  const handleFetchYoutube = async () => {
-    if (!ytInputUrl.trim()) {
-      setError('الرجاء إدخال رابط فيديو يوتيوب صحيح أولاً!');
-      return;
-    }
-    const ytId = getYouTubeId(ytInputUrl);
-    if (!ytId) {
-      setError('رابط اليوتيوب غير صالح! يرجى إدخال رابط مثل https://www.youtube.com/watch?v=... أو https://youtu.be/...');
-      return;
-    }
-    
-    setFetchingYt(true);
+  const user = currentUser || getSimpleAuthUser();
+  const uid: string | undefined = (currentUser as any)?.user_id || (user as any)?.uid || (user as any)?.user_id;
+
+  // Start the real upload the moment a file is chosen (YouTube uploads in background)
+  const handleFileChosen = async (file: File) => {
+    if (!file.type.startsWith('video/')) { setError('الرجاء اختيار ملف فيديو صالح'); return; }
     setError(null);
-    try {
-      const resp = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${ytId}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.title) {
-          setTitle(data.title);
-        }
-        if (data.author_name) {
-          setDesc(`فيديو مستورد حقيقي من منصة يوتيوب لصانع المحتوى الأصلي: ${data.author_name}. تم استدعاؤه بنجاح ويعمل بجودة كاملة.`);
-        } else {
-          setDesc(`فيديو مستورد حقيقي تفاعلي من يوتيوب بجودة عالية.`);
-        }
-        setThumbUrl(`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`);
-        setVideoUrl(`https://www.youtube.com/watch?v=${ytId}`);
-        // Duration is now auto-scraped on the server-side during import for maximum accuracy
-        setDuration('بانتظار التحليل...'); 
-      } else {
-        // Fallback
-        setTitle(`فيديو يوتيوب مستورد (${ytId})`);
-        setDesc('مقطع فيديو مميز تم استيراده تلقائياً بواسطة الرابط.');
-        setThumbUrl(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`);
-        setVideoUrl(`https://www.youtube.com/watch?v=${ytId}`);
-      }
-    } catch (err) {
-      // Fallback
-      setTitle(`فيديو يوتيوب مميز (${ytId})`);
-      setDesc('مقطع فيديو تفاعلي حقيقي تم استدعاؤه برابط مباشر.');
-      setThumbUrl(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`);
-      setVideoUrl(`https://www.youtube.com/watch?v=${ytId}`);
-    } finally {
-      setFetchingYt(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (uploadType === 'youtube' && !videoUrl.trim()) {
-      // Auto run fetch if inputs were pasted but not fetched
-      const ytId = getYouTubeId(ytInputUrl);
-      if (ytId) {
-        setVideoUrl(`https://www.youtube.com/watch?v=${ytId}`);
-        if (!thumbUrl) setThumbUrl(`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`);
-        if (!title) setTitle(`فيديو يوتيوب (${ytId})`);
-      } else {
-        setError('الرجاء إدخال رابط يوتيوب صالح واستدعاؤه أولاً!');
-        return;
-      }
-    }
-
-    if (!title.trim() || !desc.trim()) {
-      setError('يرجى كتابة عنوان ووصف للفيديو أولاً!');
-      return;
-    }
-
-    if (uploadType === 'file' && !videoFile) {
-      setError('الرجاء اختيار ملف فيديو .mp4 حقيقي لرفعه');
-      return;
-    }
-
-    if (uploadType === 'url' && !videoUrl.trim()) {
-      setError('يرجى تزويد رابط بث صالح ومفتوح لملف الفيديو');
-      return;
-    }
-
+    setVideoFile(file);
+    setStaged(null);
+    setUploadPct(0);
     setUploading(true);
-
+    setTitle((t) => t || file.name.replace(/\.[^.]+$/, '').slice(0, 100));
+    // Generate real thumbnails in parallel
+    setThumbLoading(true);
+    generateThumbnails(file).then((ts) => { setThumbOptions(ts); setThumbLoading(false); });
     try {
-      // Use the passed currentUser prop instead of Firebase auth
-      if (!currentUser || !currentUser.user_id) {
-        setError('يجب تسجيل الدخول لنشر الفيديو');
-        setUploading(false);
-        return;
-      }
-
-      let videoData;
-      if (uploadType === 'file') {
-        videoData = await uploadVideo(currentUser.user_id, {
-          title: title.trim(),
-          description: desc.trim(),
-          category,
-          duration: duration.trim() || '00:00',
-          videoUrl: '',
-          thumbnailUrl: thumbUrl.trim() || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=60',
-          isShort: false
-        }, videoFile, thumbnailFile);
-      } else {
-        // Handle URL or YouTube imports using the server-side downloader
-        videoData = await importVideo(currentUser.user_id, {
-          title: title.trim(),
-          description: desc.trim(),
-          category,
-          duration: duration.trim() || '00:00',
-          videoUrl: videoUrl.trim(),
-          thumbnailUrl: thumbUrl.trim(),
-          isShort: false
-        });
-      }
-
-      onSave(videoData as any);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'حدث خطأ غير متوقع أثناء معالجة الرفع بقاعدة البيانات.');
+      const result = await stageUpload(file, null, setUploadPct);
+      setStaged({ videoPath: result.videoPath, src: result.src, thumbPath: result.thumbPath, originalName: result.originalName });
+      setUploadPct(100);
+    } catch (e: any) {
+      setError(e.message || 'فشل رفع الملف');
     } finally {
       setUploading(false);
     }
   };
 
+  const handleCustomThumb = (f: File) => {
+    if (!f.type.startsWith('image/')) return;
+    setCustomThumbFile(f);
+    const reader = new FileReader();
+    reader.onload = () => setCustomThumbUrl(reader.result as string);
+    reader.readAsDataURL(f);
+    // Staged to the server at publish time (see handlePublish)
+  };
+
+  const handleImport = async () => {
+    if (!importUrl.trim()) { setError('أدخل رابط الفيديو أولاً'); return; }
+    if (!uid) { setError('يجب تسجيل الدخول أولاً'); return; }
+    setImporting(true); setError(null);
+    try {
+      const v = await importVideo(uid, {
+        title: title.trim() || 'فيديو مستورد', description: desc.trim(), category,
+        duration: '00:00', videoUrl: importUrl.trim(), thumbnailUrl: '', isShort: false,
+      });
+      setPublished(v as any);
+      setStep(3);
+    } catch (e: any) { setError(e.message || 'فشل الاستيراد'); }
+    finally { setImporting(false); }
+  };
+
+  const handlePublish = async () => {
+    setError(null);
+    if (!uid) { setError('يجب تسجيل الدخول لنشر الفيديو'); return; }
+    if (!title.trim()) { setError('أدخل عنواناً للفيديو أولاً'); return; }
+    if (uploading || !staged) { setError('انتظر اكتمال رفع الملف أولاً...'); return; }
+    setPublishing(true);
+    try {
+      // Resolve final thumbnail: custom upload wins, else chosen auto frame
+      let thumbPath = staged.thumbPath;
+      if (customThumbUrl && customThumbFile) {
+        const r = await stageThumbnail(customThumbFile);
+        thumbPath = r.thumbPath;
+      } else if (thumbOptions[selectedThumb]) {
+        // Upload the chosen auto-generated frame as the thumbnail
+        const blob = await (await fetch(thumbOptions[selectedThumb])).blob();
+        const r = await stageThumbnail(new File([blob], 'thumb.jpg', { type: 'image/jpeg' }));
+        thumbPath = r.thumbPath;
+      }
+      const v = await publishVideo(uid, {
+        title: title.trim(), description: desc.trim(), category, isShort: false,
+        duration: '00:00', videoPath: staged.videoPath, thumbPath, visibility,
+      });
+      setPublished(v as any);
+      setStep(3);
+    } catch (e: any) { setError(e.message || 'فشل النشر'); }
+    finally { setPublishing(false); }
+  };
+
+  const videoLink = published ? `${window.location.origin}${window.location.pathname}?v=${published.id}` : '';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in text-right text-white">
-      <div className="relative w-full max-w-lg bg-[var(--yt-bg-elev)] border border-[#272727] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        
-        {/* Header bar */}
-        <div className="flex items-center justify-between p-5 border-b border-[#272727]">
-          <button 
-            type="button"
-            onClick={onClose}
-            className="p-1 px-3 text-xs bg-[var(--yt-chip-hover)] hover:bg-[var(--yt-chip-hover)] hover:text-red-500 rounded-lg select-none transition-colors"
-          >
-            إغلاق
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" dir="rtl">
+      <div className="relative w-full max-w-2xl bg-[#212121] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] text-white">
+
+        {/* YouTube-style header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#3d3d3d]">
+          <h3 className="text-lg font-medium">
+            {step === 0 ? 'رفع فيديو' : step === 3 ? 'تم النشر' : STEPS[step - 1]}
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors" aria-label="إغلاق">
+            <X className="w-5 h-5" />
           </button>
-          
-          <div className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-red-500 animate-bounce" />
-            <h3 className="text-base font-black">رفع فيديو جديد لقاعدة البيانات حياً</h3>
-          </div>
         </div>
 
-        {/* Content pane */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4.5 overflow-y-auto flex-1">
-          {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-500 font-bold">
-              ⚠️ {error}
-            </div>
-          )}
-
-          {/* Title input */}
-          <div className="space-y-1.5">
-            <label className="text-xs text-[var(--yt-text-2)] font-bold block">عنوان وموضوع الفيديو *</label>
-            <input
-              type="text"
-              required
-              placeholder="مثال: مراجعة شاملة للسيارة الجديدة ومواصفاتها الفنية"
-              value={title || ''}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[var(--yt-bg-elev)] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white"
-            />
+        {/* Step indicator (YouTube Studio style) */}
+        {step >= 1 && step <= 2 && (
+          <div className="flex items-center gap-2 px-6 pt-4">
+            {STEPS.slice(0, 2).map((s, i) => (
+              <React.Fragment key={s}>
+                <div className="flex items-center gap-2">
+                  <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold ${
+                    step > i + 1 ? 'bg-green-600' : step === i + 1 ? 'bg-[#3ea6ff]' : 'bg-[#3d3d3d] text-neutral-400'
+                  }`}>
+                    {step > i + 1 ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                  </span>
+                  <span className={`text-sm ${step === i + 1 ? 'font-bold' : 'text-neutral-400'}`}>{s}</span>
+                </div>
+                {i === 0 && <div className="flex-1 h-px bg-[#3d3d3d] mx-2" />}
+              </React.Fragment>
+            ))}
           </div>
+        )}
 
-          {/* Description input */}
-          <div className="space-y-1.5">
-            <label className="text-xs text-[var(--yt-text-2)] font-bold block">الوصف بالتفصيل *</label>
-            <textarea
-              required
-              placeholder="اكتب ماذا سيتحدّث عنه مقطع الفيديو الخاص بك بالتفصيل..."
-              value={desc || ''}
-              rows={3}
-              onChange={(e) => setDesc(e.target.value)}
-              className="w-full bg-[var(--yt-bg-elev)] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white resize-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Category selection */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-[var(--yt-text-2)] font-bold block">التصنيف</label>
-              <select
-                value={category || ''}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-[var(--yt-bg-elev)] border border-[#272727] focus:border-red-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none text-white appearance-none cursor-pointer"
-              >
-                <option value="تقنية">تقنية 💻</option>
-                <option value="سفر">سفر ✈️</option>
-                <option value="طبيعة">طبيعة 🌲</option>
-                <option value="ألعاب">ألعاب 🎮</option>
-                <option value="طبخ">طبخ 🍳</option>
-              </select>
+        {/* Real upload progress bar (YouTube style) */}
+        {(uploading || staged) && step < 3 && (
+          <div className="px-6 pt-3">
+            <div className="flex items-center justify-between text-xs text-neutral-400 mb-1.5">
+              <span>{uploading ? `جارٍ الرفع... ${uploadPct}%` : 'اكتمل الرفع ✓'}</span>
+              <span className="truncate max-w-[60%]">{videoFile?.name}</span>
             </div>
-
-            {/* Duration */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-[var(--yt-text-2)] font-bold block">المدة الزمنية (تحسب تلقائياً - مثال: 03:15)</label>
-              <input
-                type="text"
-                value={duration || ''}
-                onChange={(e) => setDuration(e.target.value)}
-                placeholder="00:00"
-                className="w-full bg-[var(--yt-bg-elev)] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white"
-                dir="ltr"
+            <div className="h-1.5 bg-[#3d3d3d] rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${uploadPct === 100 ? 'bg-green-500' : 'bg-[#3ea6ff]'}`}
+                style={{ width: `${uploadPct}%` }}
               />
             </div>
           </div>
+        )}
 
-          {/* Toggle upload type */}
-          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[var(--yt-bg-elev)] rounded-xl border border-[#272727]" id="upload-type-tabs">
-            <button
-              type="button"
-              onClick={() => setUploadType('file')}
-              className={`py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${
-                uploadType === 'file' ? 'bg-red-600 text-white shadow' : 'text-[var(--yt-text-2)] hover:text-white'
-              }`}
-            >
-              📂 رفع ملف محلي
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setUploadType('url');
-                if (!videoUrl) {
-                  setVideoUrl(SAMPLE_MP4S[0].src);
-                  setThumbUrl(SAMPLE_MP4S[0].thumb);
-                }
-              }}
-              className={`py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${
-                uploadType === 'url' ? 'bg-red-600 text-white shadow' : 'text-[var(--yt-text-2)] hover:text-white'
-              }`}
-            >
-              🔗 روابط مباشرة
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setUploadType('youtube');
-              }}
-              className={`py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${
-                uploadType === 'youtube' ? 'bg-red-600 text-white shadow' : 'text-[var(--yt-text-2)] hover:text-white'
-              }`}
-            >
-              📺 استيراد يوتيوب
-            </button>
+        {error && (
+          <div className="mx-6 mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400 font-medium flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
           </div>
+        )}
 
-          {uploadType === 'file' ? (
-            <div key="upload-file-wrapper" className="space-y-3.5 bg-[var(--yt-bg-elev)]/40 p-4 rounded-xl border border-[var(--yt-border)]">
-              {/* Select Video file input */}
-              <div className="space-y-1.5 flex-1">
-                <label className="text-xs text-[var(--yt-text)] font-black flex items-center gap-1.5">
-                  <FileVideo className="w-4 h-4 text-red-500" />
-                  <span>ملف الفيديو (.MP4 أو .mov) *</span>
-                </label>
-                <input
-                  key="file-video-input-element"
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      const file = e.target.files[0];
-                      setVideoFile(file);
-                      if (!title) setTitle(file.name.split('.')[0]);
-                      
-                      // Auto-calculate video duration
-                      const videoEl = document.createElement('video');
-                      videoEl.preload = 'metadata';
-                      
-                      const onMetadata = () => {
-                        let durationSeconds = videoEl.duration;
-                        if (durationSeconds === Infinity) {
-                          videoEl.currentTime = 1e101;
-                          videoEl.ontimeupdate = () => {
-                            videoEl.ontimeupdate = null;
-                            const formatted = formatVideoDuration(videoEl.duration);
-                            if (formatted) setDuration(formatted);
-                            URL.revokeObjectURL(videoEl.src);
-                          };
-                        } else {
-                          const formatted = formatVideoDuration(durationSeconds);
-                          if (formatted) setDuration(formatted);
-                          URL.revokeObjectURL(videoEl.src);
-                        }
-                      };
-                      
-                      videoEl.onloadedmetadata = onMetadata;
-                      videoEl.src = URL.createObjectURL(file);
-                    }
-                  }}
-                  className="w-full text-xs text-[var(--yt-text-2)] file:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer"
-                />
-                {videoFile && (
-                  <span className="text-[10px] text-green-500 font-bold block">
-                    ✓ تم اختيار "{videoFile.name}" ({(videoFile.size / 1024 / 1024).toFixed(1)} ميجابايت)
-                  </span>
-                )}
+        {/* ============ STEP 0: SELECT FILE (YouTube upload dialog) ============ */}
+        {step === 0 && (
+          <div className="p-8 flex flex-col items-center text-center">
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleFileChosen(f); }}
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-full rounded-2xl border-2 border-dashed p-10 cursor-pointer transition-colors ${
+                dragOver ? 'border-[#3ea6ff] bg-[#3ea6ff]/5' : 'border-[#3d3d3d] hover:border-neutral-500'
+              }`}
+            >
+              <div className="w-32 h-32 mx-auto rounded-full bg-[#3d3d3d] flex items-center justify-center mb-5">
+                {uploading
+                  ? <Loader2 className="w-12 h-12 text-[#3ea6ff] animate-spin" />
+                  : <UploadCloud className="w-12 h-12 text-neutral-400" />}
               </div>
-
-              {/* Select Thumbnail Image file input */}
-              <div className="space-y-1.5 flex-1">
-                <label className="text-xs text-[var(--yt-text)] font-black flex items-center gap-1.5">
-                  <ImageIcon className="w-4 h-4 text-red-500" />
-                  <span>صورة الغلاف (Thumbnail Image)</span>
-                </label>
-                <input
-                  key="file-thumb-input-element"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setThumbnailFile(e.target.files[0]);
-                    }
-                  }}
-                  className="w-full text-xs text-[var(--yt-text-2)] file:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[var(--yt-chip-hover)] file:text-white hover:file:bg-[var(--yt-chip-hover)] cursor-pointer"
-                />
-                {thumbnailFile && (
-                  <span className="text-[10px] text-green-500 font-bold block">
-                    ✓ تم اختيار صورة غلاف مخصصة بقاعدة البيانات.
-                  </span>
-                )}
-              </div>
+              <p className="text-sm text-neutral-400 mb-4">اسحب ملف الفيديو وأفلته هنا أو</p>
+              <span className="inline-block px-6 py-2.5 bg-[#3ea6ff] hover:bg-[#65b8ff] text-[#0f0f0f] font-bold text-sm rounded-full transition-colors">
+                اختيار الملفات
+              </span>
+              <input
+                ref={fileInputRef} type="file" accept="video/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileChosen(f); }}
+              />
             </div>
-          ) : uploadType === 'url' ? (
-            <div key="upload-url-wrapper" className="space-y-3.5 bg-[var(--yt-bg-elev)]/50 p-4 rounded-xl border border-[var(--yt-border)]">
-              {/* Preset buttons */}
-              <div className="space-y-1">
-                <span className="text-[10px] text-[var(--yt-text-2)] font-bold">قوالب الفيدوهات الجاهزة التجريبية:</span>
-                <div className="flex gap-2">
-                  {SAMPLE_MP4S.map((tmpl, index) => (
-                    <button
-                      type="button"
-                      key={index}
-                      onClick={() => {
-                        setVideoUrl(tmpl.src);
-                        setThumbUrl(tmpl.thumb);
-                        if (!title) setTitle(tmpl.name.replace(/🚗|🏔️/, ''));
-                      }}
-                      className={`text-[10px] bg-[var(--yt-bg-elev)] border px-2 py-1 rounded-md transition-colors ${
-                        videoUrl === tmpl.src ? 'border-red-500 text-red-400' : 'border-[var(--yt-border)] text-[var(--yt-text-2)]'
-                      }`}
-                    >
-                      بث {index + 1}
-                    </button>
-                  ))}
+            <p className="text-xs text-neutral-500 mt-5 leading-relaxed max-w-md">
+              بنشر الفيديو أنت توافق على شروط الاستخدام. يُمنع نشر محتوى مسروق أو مخالف.
+            </p>
+            <button onClick={() => setShowImport(!showImport)} className="mt-3 text-xs text-[#3ea6ff] hover:underline">
+              أو استيراد من رابط مباشر
+            </button>
+            {showImport && (
+              <div className="w-full mt-3 flex gap-2">
+                <input
+                  value={importUrl} onChange={(e) => setImportUrl(e.target.value)}
+                  placeholder="https://example.com/video.mp4"
+                  className="flex-1 bg-[#121212] border border-[#3d3d3d] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#3ea6ff]"
+                  dir="ltr"
+                />
+                <button
+                  onClick={handleImport} disabled={importing}
+                  className="px-5 py-2.5 bg-[#3ea6ff] text-[#0f0f0f] text-sm font-bold rounded-full disabled:opacity-50"
+                >
+                  {importing ? 'جارٍ...' : 'استيراد'}
+                </button>
+              </div>
+            )}
+            {staged && (
+              <button
+                onClick={() => setStep(1)}
+                className="mt-6 px-8 py-2.5 bg-white text-black font-bold text-sm rounded-full hover:bg-neutral-200 transition-colors"
+              >
+                متابعة إلى التفاصيل
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ============ STEP 1: DETAILS (YouTube Studio) ============ */}
+        {step === 1 && (
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className="flex gap-5 flex-col md:flex-row">
+              {/* Live preview */}
+              <div className="md:w-64 shrink-0">
+                <div className="rounded-xl overflow-hidden bg-black aspect-video relative">
+                  {videoFile
+                    ? <video src={URL.createObjectURL(videoFile)} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                    : <div className="w-full h-full flex items-center justify-center"><Play className="w-8 h-8 text-neutral-500" /></div>}
                 </div>
+                <p className="text-xs text-neutral-500 mt-2 truncate">{videoFile?.name}</p>
               </div>
-
-              {/* URL streams inputs */}
-              <div className="space-y-1">
-                <label className="text-xs text-[var(--yt-text-2)] font-bold block">رابط بث الفيديو المباشر (Direct Video Stream URL)</label>
-                <input
-                  key="url-video-input-element"
-                  type="url"
-                  placeholder="https://example.com/stream.mp4"
-                  value={videoUrl || ''}
-                  onChange={(e) => {
-                    const newUrl = e.target.value;
-                    setVideoUrl(newUrl);
-                    
-                    if (newUrl) {
-                      const videoEl = document.createElement('video');
-                      videoEl.crossOrigin = 'anonymous';
-                      videoEl.preload = 'metadata';
-                      videoEl.onloadedmetadata = () => {
-                        let durationSeconds = videoEl.duration;
-                        if (durationSeconds === Infinity) {
-                          videoEl.currentTime = 1e101;
-                          videoEl.ontimeupdate = () => {
-                            videoEl.ontimeupdate = null;
-                            const formatted = formatVideoDuration(videoEl.duration);
-                            if (formatted) setDuration(formatted);
-                          };
-                        } else {
-                          const formatted = formatVideoDuration(durationSeconds);
-                          if (formatted) setDuration(formatted);
-                        }
-                      };
-                      // ignore errors silently for CORS/invalid urls
-                      videoEl.onerror = () => {};
-                      videoEl.src = newUrl;
-                    }
-                  }}
-                  className="w-full bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
-                  dir="ltr"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-[var(--yt-text-2)] font-bold block">رابط صورة الغلاف (Banner Image URL)</label>
-                <input
-                  key="url-thumb-input-element"
-                  type="url"
-                  placeholder="https://example.com/banner.jpg"
-                  value={thumbUrl || ''}
-                  onChange={(e) => setThumbUrl(e.target.value)}
-                  className="w-full bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
-                  dir="ltr"
-                />
-              </div>
-            </div>
-          ) : (
-            <div key="upload-youtube-wrapper" className="space-y-3.5 bg-red-950/10 p-4 rounded-xl border border-red-500/10">
-              <div className="space-y-1">
-                <label className="text-xs text-red-400 font-bold block">رابط فيديو يوتيوب الحقيقي *</label>
-                <div className="flex gap-2">
+              <div className="flex-1 space-y-5">
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-sm font-medium">العنوان <span className="text-neutral-500">(مطلوب)</span></label>
+                    <span className="text-xs text-neutral-500">{title.length}/100</span>
+                  </div>
                   <input
-                    type="url"
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    value={ytInputUrl}
-                    onChange={(e) => setYtInputUrl(e.target.value)}
-                    className="flex-1 bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
-                    dir="ltr"
+                    value={title} onChange={(e) => setTitle(e.target.value.slice(0, 100))}
+                    placeholder="أضف عنواناً يصف الفيديو"
+                    className="w-full bg-transparent border border-[#3d3d3d] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#3ea6ff] placeholder-neutral-600"
                   />
-                  <button
-                    type="button"
-                    disabled={fetchingYt}
-                    onClick={handleFetchYoutube}
-                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shrink-0 disabled:bg-[var(--yt-chip-hover)]"
-                  >
-                    {fetchingYt ? 'جاري السحب...' : 'تحميل واستدعاء تلقائي ⚡'}
-                  </button>
                 </div>
-                <p className="text-[10px] text-[var(--yt-text-2)] mt-1">
-                  ألصق رابط الفيديو من يوتيوب واضغط "استدعاء". سيقوم الخادم بسحب الفيديو وتخزينه في قاعدة البيانات محلياً لضمان سرعة التشغيل!
-                </p>
-              </div>
-
-              {videoUrl && (
-                <div className="p-2.5 bg-green-500/10 border border-green-500/20 rounded-xl text-[10px] text-green-400 font-bold space-y-1.5" dir="rtl">
-                  <div>✓ تم استيراد الفيديو بنجاح: {getYouTubeId(videoUrl)}</div>
-                  <div className="flex items-center gap-2">
-                    {thumbUrl && (
-                      <img src={thumbUrl || undefined} className="w-16 h-10 object-cover rounded border border-[var(--yt-border)]" alt="" referrerPolicy="no-referrer" />
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-sm font-medium">الوصف</label>
+                    <span className="text-xs text-neutral-500">{desc.length}/5000</span>
+                  </div>
+                  <textarea
+                    value={desc} onChange={(e) => setDesc(e.target.value.slice(0, 5000))}
+                    placeholder="أخبر المشاهدين عن الفيديو"
+                    rows={4}
+                    className="w-full bg-transparent border border-[#3d3d3d] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#3ea6ff] placeholder-neutral-600 resize-none"
+                  />
+                </div>
+                {/* Thumbnails — YouTube style */}
+                <div>
+                  <label className="text-sm font-medium block mb-2">الصورة المصغرة</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {thumbLoading && <span className="text-xs text-neutral-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> جارٍ توليد الصور...</span>}
+                    {thumbOptions.map((t, i) => (
+                      <button
+                        key={i} type="button"
+                        onClick={() => { setSelectedThumb(i); setCustomThumbUrl(null); }}
+                        className={`relative w-28 aspect-video rounded-lg overflow-hidden border-2 transition-all ${
+                          selectedThumb === i && !customThumbUrl ? 'border-[#3ea6ff]' : 'border-transparent hover:border-neutral-500'
+                        }`}
+                      >
+                        <img src={t} className="w-full h-full object-cover" alt={`صورة ${i + 1}`} />
+                      </button>
+                    ))}
+                    {customThumbUrl && (
+                      <button
+                        type="button"
+                        className="relative w-28 aspect-video rounded-lg overflow-hidden border-2 border-[#3ea6ff]"
+                      >
+                        <img src={customThumbUrl} className="w-full h-full object-cover" alt="مخصصة" />
+                      </button>
                     )}
-                    <div className="truncate flex-1">
-                      <strong>المشغل:</strong> محاكي يوتيوب الذكي سيعرض البث المباشر فور التشغيل!
+                    <label className="w-28 aspect-video rounded-lg border-2 border-dashed border-[#3d3d3d] hover:border-neutral-500 flex flex-col items-center justify-center gap-1 cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors">
+                      <ImageIcon className="w-5 h-5" />
+                      <span className="text-[10px]">تحميل صورة</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCustomThumb(f); }} />
+                    </label>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium block mb-1.5">الفئة</label>
+                    <select
+                      value={category} onChange={(e) => setCategory(e.target.value)}
+                      className="w-full bg-[#121212] border border-[#3d3d3d] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#3ea6ff]"
+                    >
+                      {['تقنية', 'سفر', 'طبيعة', 'ألعاب', 'طبخ', 'تعليم', 'ترفيه', 'رياضة', 'موسيقى', 'أخرى'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-1.5">الجمهور</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button" onClick={() => setAudience('notkids')}
+                        className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                          audience === 'notkids' ? 'bg-[#3ea6ff]/15 border-[#3ea6ff] text-[#3ea6ff]' : 'border-[#3d3d3d] text-neutral-400'
+                        }`}
+                      >
+                        <UserCheck className="w-4 h-4" /> ليس للأطفال
+                      </button>
+                      <button
+                        type="button" onClick={() => setAudience('kids')}
+                        className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                          audience === 'kids' ? 'bg-[#3ea6ff]/15 border-[#3ea6ff] text-[#3ea6ff]' : 'border-[#3d3d3d] text-neutral-400'
+                        }`}
+                      >
+                        <Baby className="w-4 h-4" /> للأطفال
+                      </button>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Submission block */}
-          <div className="pt-2">
+        {/* ============ STEP 2: VISIBILITY (YouTube Studio) ============ */}
+        {step === 2 && (
+          <div className="p-6 overflow-y-auto flex-1">
+            <h4 className="font-medium mb-1">الوضوح</h4>
+            <p className="text-xs text-neutral-500 mb-4">اختر من يستطيع مشاهدة الفيديو</p>
+            <div className="border border-[#3d3d3d] rounded-xl overflow-hidden">
+              {([
+                { id: 'public' as Visibility, icon: Globe, title: 'عام', desc: 'يمكن للجميع مشاهدة الفيديو والبحث عنه' },
+                { id: 'unlisted' as Visibility, icon: Link2, title: 'غير مدرج', desc: 'يمكن لأي شخص لديه الرابط مشاهدته' },
+                { id: 'private' as Visibility, icon: Lock, title: 'خاص', desc: 'أنت فقط تستطيع مشاهدة الفيديو' },
+              ]).map((opt) => (
+                <button
+                  key={opt.id} type="button" onClick={() => setVisibility(opt.id)}
+                  className={`w-full flex items-center gap-4 p-4 text-right transition-colors border-b border-[#3d3d3d] last:border-0 ${
+                    visibility === opt.id ? 'bg-[#3ea6ff]/10' : 'hover:bg-white/5'
+                  }`}
+                >
+                  <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    visibility === opt.id ? 'border-[#3ea6ff]' : 'border-neutral-500'
+                  }`}>
+                    {visibility === opt.id && <span className="w-2.5 h-2.5 rounded-full bg-[#3ea6ff]" />}
+                  </span>
+                  <opt.icon className="w-5 h-5 text-neutral-400 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-medium">{opt.title}</span>
+                    <span className="block text-xs text-neutral-500 mt-0.5">{opt.desc}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ============ STEP 3: DONE ============ */}
+        {step === 3 && published && (
+          <div className="p-8 flex flex-col items-center text-center">
+            <div className="w-20 h-20 rounded-full bg-green-600/15 flex items-center justify-center mb-4">
+              <Check className="w-10 h-10 text-green-500" />
+            </div>
+            <h4 className="text-lg font-medium mb-1">تم نشر الفيديو بنجاح!</h4>
+            <p className="text-sm text-neutral-400 mb-5 line-clamp-1 max-w-full">{published.title}</p>
+            <div className="w-full flex items-center gap-2 bg-[#121212] border border-[#3d3d3d] rounded-lg px-4 py-2.5 mb-4">
+              <span className="flex-1 text-xs text-neutral-400 truncate" dir="ltr">{videoLink}</span>
+              <button
+                onClick={() => { navigator.clipboard.writeText(videoLink); }}
+                className="text-xs text-[#3ea6ff] font-bold hover:underline shrink-0"
+              >
+                نسخ الرابط
+              </button>
+            </div>
             <button
-              type="submit"
-              disabled={uploading}
-              className="w-full bg-red-600 hover:bg-red-700 disabled:bg-[var(--yt-chip-hover)] text-white font-black py-3 rounded-xl hover:shadow-lg hover:shadow-red-500/10 transition-all font-sans cursor-pointer flex items-center justify-center gap-2 text-sm shadow-md"
+              onClick={() => { if (published) onSave(published); }}
+              className="px-8 py-2.5 bg-[#3ea6ff] text-[#0f0f0f] font-bold text-sm rounded-full hover:bg-[#65b8ff] transition-colors"
             >
-              {uploading ? (
-                <>
-                  <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                  <span>جاري رفع ونشر الفيديو لقاعدة البيانات...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>انشر بقناتك الآن للعامة 🚀</span>
-                </>
-              )}
+              إغلاق
             </button>
           </div>
-        </form>
+        )}
+
+        {/* Footer nav */}
+        {step >= 1 && step <= 2 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-[#3d3d3d]">
+            <button
+              onClick={() => setStep((s) => s - 1)}
+              className="flex items-center gap-1 px-4 py-2 text-sm text-neutral-300 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" /> رجوع
+            </button>
+            {step === 1 ? (
+              <button
+                onClick={() => title.trim() ? setStep(2) : setError('أدخل عنواناً للفيديو أولاً')}
+                className="flex items-center gap-1 px-6 py-2 bg-[#3ea6ff] text-[#0f0f0f] text-sm font-bold rounded-full hover:bg-[#65b8ff] transition-colors"
+              >
+                التالي <ChevronLeft className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={handlePublish} disabled={publishing}
+                className="px-8 py-2 bg-[#3ea6ff] text-[#0f0f0f] text-sm font-bold rounded-full hover:bg-[#65b8ff] transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {publishing && <Loader2 className="w-4 h-4 animate-spin" />}
+                {publishing ? 'جارٍ النشر...' : 'نشر'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
