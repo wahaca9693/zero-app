@@ -150,7 +150,7 @@ export default function AccountView({
         
         {/* Decorative Channel Banner */}
         <div 
-          className="relative h-32 md:h-44 rounded-2xl overflow-hidden bg-gradient-to-r from-red-800 via-neutral-900 to-red-950 border border-neutral-800 bg-cover bg-center" 
+          className="relative h-32 md:h-44 rounded-2xl overflow-hidden bg-gradient-to-r from-red-800 via-neutral-900 to-red-950 border border-[var(--yt-border)] bg-cover bg-center" 
           style={currentUser.banner ? { backgroundImage: `url(${currentUser.banner})` } : {}}
           id="channel-banner"
         >
@@ -171,8 +171,8 @@ export default function AccountView({
                 )}
               </div>
               <div>
-                <h2 className="text-lg md:text-2xl font-black text-white">{currentUser.username}</h2>
-                <p className="text-xs text-gray-300 mt-1">{currentUser.email}</p>
+                <h2 className="text-lg md:text-2xl font-black text-[var(--yt-text)]">{currentUser.username}</h2>
+                <p className="text-xs text-[var(--yt-text)] mt-1">{currentUser.email}</p>
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-2 bg-red-600/10 border border-red-500/20 rounded-md text-[10px] text-red-500 font-bold">
                   <Shield className="w-3 h-3" />
                   قناة موثقة من الإدارة
@@ -208,7 +208,7 @@ export default function AccountView({
                     window.location.reload();
                   }
                 }}
-                className="px-4 py-2 bg-neutral-800 border border-neutral-700 text-gray-300 rounded-full text-xs font-bold transition-all duration-150 flex items-center gap-2 cursor-pointer hover:bg-neutral-700"
+                className="px-4 py-2 bg-[var(--yt-chip-hover)] border border-[var(--yt-border)] text-[var(--yt-text)] rounded-full text-xs font-bold transition-all duration-150 flex items-center gap-2 cursor-pointer hover:bg-[var(--yt-chip-hover)]"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>مسح الكاش المحلي</span>
@@ -218,7 +218,7 @@ export default function AccountView({
                 onClick={() => setShowEditProfile(!showEditProfile)}
                 className={`px-4 py-2 rounded-full text-xs font-bold transition-all duration-150 flex items-center gap-2 cursor-pointer ${
                   showEditProfile 
-                    ? 'bg-neutral-800 text-white hover:bg-neutral-700 border border-neutral-700' 
+                    ? 'bg-[var(--yt-chip-hover)] text-[var(--yt-text)] hover:bg-[var(--yt-chip-hover)] border border-[var(--yt-border)]' 
                     : 'bg-red-600 hover:bg-red-700 text-white'
                 }`}
               >
@@ -228,7 +228,7 @@ export default function AccountView({
 
               <button
                 onClick={onLogout}
-                className="px-4 py-2 bg-neutral-950/60 hover:bg-neutral-900 text-gray-300 hover:text-white rounded-full border border-neutral-800 text-xs font-bold transition-all duration-150 flex items-center gap-2 cursor-pointer"
+                className="px-4 py-2 bg-[var(--yt-bg)]/60 hover:bg-[var(--yt-bg-elev)] text-[var(--yt-text)] hover:text-[var(--yt-text)] rounded-full border border-[var(--yt-border)] text-xs font-bold transition-all duration-150 flex items-center gap-2 cursor-pointer"
               >
                 <LogOut className="w-4 h-4 text-red-500" />
                 <span>تسجيل الخروج</span>
@@ -241,13 +241,13 @@ export default function AccountView({
         {showEditProfile && (
           <form 
             onSubmit={handleSaveProfile} 
-            className="bg-[#121212] border-2 border-red-600/30 rounded-2xl p-6 space-y-6 animate-fade-in shadow-2xl relative"
+            className="bg-[var(--yt-bg-elev)] border-2 border-red-600/30 rounded-2xl p-6 space-y-6 animate-fade-in shadow-2xl relative"
             id="profile-customizer-form"
           >
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+            <div className="flex items-center justify-between border-b border-[var(--yt-border)] pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-red-500 animate-pulse" />
-                <h3 className="text-base font-black text-white">تخصيص شكل القناة والبيانات بقاعدة البيانات</h3>
+                <h3 className="text-base font-black text-[var(--yt-text)]">تخصيص شكل القناة والبيانات بقاعدة البيانات</h3>
               </div>
               <span className="text-[10px] bg-red-500/10 text-red-500 font-bold px-2.5 py-1 rounded-full border border-red-500/15">
                 تحديث حي 100%
@@ -271,29 +271,29 @@ export default function AccountView({
               {/* Profile Details Column */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-1.5">اسم القناة المتألق الجديد:</label>
+                  <label className="block text-xs font-bold text-[var(--yt-text-2)] mb-1.5">اسم القناة المتألق الجديد:</label>
                   <div className="relative">
-                    <User className="absolute right-3.5 top-3 w-4 h-4 text-gray-500" />
+                    <User className="absolute right-3.5 top-3 w-4 h-4 text-[var(--yt-text-2)]" />
                     <input 
                       type="text" 
                       required
                       value={editUsername} 
                       onChange={(e) => setEditUsername(e.target.value)}
                       placeholder="مثال: مبدع العرب، قيمر محترف..." 
-                      className="w-full pr-10 pl-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:border-red-500"
+                      className="w-full pr-10 pl-4 py-2.5 bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-xl text-xs text-[var(--yt-text)] focus:outline-none focus:border-red-500"
                     />
                   </div>
-                  <span className="text-[10px] text-gray-500 mt-1 block">تغيير الاسم سوف يحدث تلقائياً جميع فيديوهاتك السابقة في المنصة!</span>
+                  <span className="text-[10px] text-[var(--yt-text-2)] mt-1 block">تغيير الاسم سوف يحدث تلقائياً جميع فيديوهاتك السابقة في المنصة!</span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-1.5">وصف القناة / السيرة الذاتية (About):</label>
+                  <label className="block text-xs font-bold text-[var(--yt-text-2)] mb-1.5">وصف القناة / السيرة الذاتية (About):</label>
                   <textarea 
                     value={editDescription} 
                     onChange={(e) => setEditDescription(e.target.value)}
                     rows={4}
                     placeholder="اكتب شيئاً عن قناتك والمحتوى الرائع الذي تنشره هنا..." 
-                    className="w-full px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:border-red-500 resize-none leading-relaxed"
+                    className="w-full px-4 py-2 bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-xl text-xs text-[var(--yt-text)] focus:outline-none focus:border-red-500 resize-none leading-relaxed"
                   />
                 </div>
               </div>
@@ -302,13 +302,13 @@ export default function AccountView({
               <div className="space-y-5">
                 {/* 1. Avatar modification block */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-2">تحديث الصورة الشخصية للرمز التعريفي:</label>
+                  <label className="block text-xs font-bold text-[var(--yt-text-2)] mb-2">تحديث الصورة الشخصية للرمز التعريفي:</label>
                   
                   {/* Avatar upload option selection tabs */}
                   <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="bg-neutral-900/60 p-3 rounded-xl border border-neutral-800 flex flex-col items-center justify-center relative">
-                      <Camera className="w-5 h-5 text-gray-400 mb-1" />
-                      <span className="text-[10px] text-gray-400 font-bold mb-1">رفع ملف صورة</span>
+                    <div className="bg-[var(--yt-bg-elev)]/60 p-3 rounded-xl border border-[var(--yt-border)] flex flex-col items-center justify-center relative">
+                      <Camera className="w-5 h-5 text-[var(--yt-text-2)] mb-1" />
+                      <span className="text-[10px] text-[var(--yt-text-2)] font-bold mb-1">رفع ملف صورة</span>
                       <input 
                         type="file" 
                         accept="image/*"
@@ -327,7 +327,7 @@ export default function AccountView({
                       )}
                     </div>
 
-                    <div className="bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800 space-y-1.5">
+                    <div className="bg-[var(--yt-bg-elev)]/60 p-2.5 rounded-xl border border-[var(--yt-border)] space-y-1.5">
                       <span className="text-[9px] text-neutral-400 block font-bold">أو أدخل رابطاً مباشراً للصورة:</span>
                       <input 
                         type="url" 
@@ -337,13 +337,13 @@ export default function AccountView({
                           setAvatarFile(null); // overwrite local uploaded files 
                         }}
                         placeholder="https://..." 
-                        className="w-full px-2 py-1 bg-neutral-950 border border-neutral-800 rounded text-[10px] text-gray-300 focus:outline-none focus:border-red-500"
+                        className="w-full px-2 py-1 bg-[var(--yt-bg)] border border-[var(--yt-border)] rounded text-[10px] text-[var(--yt-text)] focus:outline-none focus:border-red-500"
                       />
                     </div>
                   </div>
 
                   {/* Exquisite template avatar presets choice */}
-                  <span className="text-[10px] text-gray-500 font-bold block mb-1.5">أو اختر رمزاً تعبيرياً فائق الجودة بضغطة زر:</span>
+                  <span className="text-[10px] text-[var(--yt-text-2)] font-bold block mb-1.5">أو اختر رمزاً تعبيرياً فائق الجودة بضغطة زر:</span>
                   <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-none scroll-smooth">
                     {AVATAR_PRESETS.map((p, idx) => (
                       <button 
@@ -354,11 +354,11 @@ export default function AccountView({
                           setAvatarFile(null);
                         }}
                         className={`flex flex-col items-center shrink-0 p-1.5 rounded-xl border-2 transition-all active:scale-95 ${
-                          editAvatarUrl === p.url ? 'border-red-600 bg-red-600/10' : 'border-neutral-800 hover:border-neutral-700 bg-neutral-900'
+                          editAvatarUrl === p.url ? 'border-red-600 bg-red-600/10' : 'border-[var(--yt-border)] hover:border-[var(--yt-border)] bg-[var(--yt-bg-elev)]'
                         }`}
                       >
                         <img src={p.url} className="w-10 h-10 rounded-full object-cover mb-1" alt="" referrerPolicy="no-referrer" />
-                        <span className="text-[9px] text-gray-400 font-medium">{p.name}</span>
+                        <span className="text-[9px] text-[var(--yt-text-2)] font-medium">{p.name}</span>
                       </button>
                     ))}
                   </div>
@@ -366,13 +366,13 @@ export default function AccountView({
 
                 {/* 2. Banner modification block */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-2">تحديث غلاف القناة (Banner Cover Image):</label>
+                  <label className="block text-xs font-bold text-[var(--yt-text-2)] mb-2">تحديث غلاف القناة (Banner Cover Image):</label>
                   
                   {/* Banner Upload controls choice tabs */}
                   <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="bg-neutral-900/60 p-3 rounded-xl border border-neutral-800 flex flex-col items-center justify-center relative">
-                      <Image className="w-5 h-5 text-gray-400 mb-1" />
-                      <span className="text-[10px] text-gray-400 font-bold mb-1">رفع صورة الغلاف</span>
+                    <div className="bg-[var(--yt-bg-elev)]/60 p-3 rounded-xl border border-[var(--yt-border)] flex flex-col items-center justify-center relative">
+                      <Image className="w-5 h-5 text-[var(--yt-text-2)] mb-1" />
+                      <span className="text-[10px] text-[var(--yt-text-2)] font-bold mb-1">رفع صورة الغلاف</span>
                       <input 
                         type="file" 
                         accept="image/*"
@@ -391,7 +391,7 @@ export default function AccountView({
                       )}
                     </div>
 
-                    <div className="bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800 space-y-1.5">
+                    <div className="bg-[var(--yt-bg-elev)]/60 p-2.5 rounded-xl border border-[var(--yt-border)] space-y-1.5">
                       <span className="text-[9px] text-neutral-400 block font-bold">أو انسخ رابط غلاف ويب جاهز:</span>
                       <input 
                         type="url" 
@@ -401,14 +401,14 @@ export default function AccountView({
                           setBannerFile(null); // overwrite local uploaded file
                         }}
                         placeholder="https://..." 
-                        className="w-full px-2 py-1 bg-neutral-950 border border-neutral-800 rounded text-[10px] text-gray-300 focus:outline-none focus:border-red-500"
+                        className="w-full px-2 py-1 bg-[var(--yt-bg)] border border-[var(--yt-border)] rounded text-[10px] text-[var(--yt-text)] focus:outline-none focus:border-red-500"
                       />
                     </div>
                   </div>
 
                   {/* Preset customized banners */}
-                  <span className="text-[10px] text-gray-500 font-bold block mb-1.5">أو تفضل باختيار خلفية بروفايل مذهلة من المكتبة:</span>
-                  <div className="flex gap-2 bg-neutral-950 p-2 rounded-xl overflow-x-auto scrollbar-none scroll-smooth">
+                  <span className="text-[10px] text-[var(--yt-text-2)] font-bold block mb-1.5">أو تفضل باختيار خلفية بروفايل مذهلة من المكتبة:</span>
+                  <div className="flex gap-2 bg-[var(--yt-bg)] p-2 rounded-xl overflow-x-auto scrollbar-none scroll-smooth">
                     {BANNER_PRESETS.map((b, idx) => (
                       <button 
                         key={idx}
@@ -418,11 +418,11 @@ export default function AccountView({
                           setBannerFile(null);
                         }}
                         className={`flex flex-col shrink-0 p-1 rounded-lg border-2 transition-all active:scale-95 ${
-                          editBannerUrl === b.url ? 'border-red-600 bg-red-600/10' : 'border-neutral-800 hover:border-neutral-700 bg-neutral-900'
+                          editBannerUrl === b.url ? 'border-red-600 bg-red-600/10' : 'border-[var(--yt-border)] hover:border-[var(--yt-border)] bg-[var(--yt-bg-elev)]'
                         }`}
                       >
                         <img src={b.url} className="w-16 h-8 rounded object-cover mb-1" alt="" referrerPolicy="no-referrer" />
-                        <span className="text-[8px] text-gray-400">{b.name}</span>
+                        <span className="text-[8px] text-[var(--yt-text-2)]">{b.name}</span>
                       </button>
                     ))}
                   </div>
@@ -433,11 +433,11 @@ export default function AccountView({
             </div>
 
             {/* Submission triggers action strip */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-neutral-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--yt-border)]">
               <button 
                 type="button"
                 onClick={() => setShowEditProfile(false)}
-                className="px-5 py-2 bg-neutral-900 hover:bg-neutral-800 text-gray-400 hover:text-white rounded-xl text-xs font-bold select-none cursor-pointer border border-neutral-800"
+                className="px-5 py-2 bg-[var(--yt-bg-elev)] hover:bg-[var(--yt-chip-hover)] text-[var(--yt-text-2)] hover:text-[var(--yt-text)] rounded-xl text-xs font-bold select-none cursor-pointer border border-[var(--yt-border)]"
               >
                 إلغاء التعديل
               </button>
@@ -465,7 +465,7 @@ export default function AccountView({
         )}
 
         {/* Offline Mode Controller Card */}
-        <div className="bg-[#121212] border border-neutral-800 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg" id="offline-mode-control-card-logged-in">
+        <div className="bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg" id="offline-mode-control-card-logged-in">
           <div className="flex items-center gap-3.5 text-right w-full md:w-auto">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
               isOffline ? 'bg-red-600/10 text-red-500' : 'bg-green-600/10 text-green-500'
@@ -473,8 +473,8 @@ export default function AccountView({
               {isOffline ? <CloudOff className="w-5 h-5 animate-pulse" /> : <Wifi className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white">إعدادات الاتصال بالإنترنت</h3>
-              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+              <h3 className="font-bold text-sm text-[var(--yt-text)]">إعدادات الاتصال بالإنترنت</h3>
+              <p className="text-xs text-[var(--yt-text-2)] mt-0.5 leading-relaxed">
                 {isOffline 
                   ? 'أنت تتصفح حالياً بوضع عدم الاتصال بالشبكة (أوفلاين) - لن تعمل سوى الفيديوهات المحملة مسبقاً' 
                   : 'أنت متصل بالإنترنت وموصول بقاعدة البيانات الحية'
@@ -509,51 +509,51 @@ export default function AccountView({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Channel stats cardboard */}
-          <div className="lg:col-span-1 bg-[#121212] rounded-2xl p-5 border border-neutral-800 space-y-4">
-            <h3 className="text-sm font-black text-gray-400 border-b border-neutral-800 pb-2 flex items-center gap-2">
+          <div className="lg:col-span-1 bg-[var(--yt-bg-elev)] rounded-2xl p-5 border border-[var(--yt-border)] space-y-4">
+            <h3 className="text-sm font-black text-[var(--yt-text-2)] border-b border-[var(--yt-border)] pb-2 flex items-center gap-2">
               <User className="w-4 h-4 text-red-500" />
               <span>تفاصيل القناة الحالية</span>
             </h3>
 
             <div className="space-y-3.5 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">اسم القناة:</span>
-                <span className="font-bold text-white">{currentUser.username}</span>
+                <span className="text-[var(--yt-text-2)]">اسم القناة:</span>
+                <span className="font-bold text-[var(--yt-text)]">{currentUser.username}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">معرف الحساب (ID):</span>
-                <span className="font-mono text-xs text-gray-300 px-1.5 py-0.5 bg-neutral-900 border border-neutral-800 rounded">
+                <span className="text-[var(--yt-text-2)]">معرف الحساب (ID):</span>
+                <span className="font-mono text-xs text-[var(--yt-text)] px-1.5 py-0.5 bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded">
                   {currentUser.user_id}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">المرتبة والامتيازات:</span>
+                <span className="text-[var(--yt-text-2)]">المرتبة والامتيازات:</span>
                 <span className="font-bold text-amber-500">ناشر ومبدع محتوى</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">الفيديوهات المرفوعة:</span>
+                <span className="text-[var(--yt-text-2)]">الفيديوهات المرفوعة:</span>
                 <span className="font-black text-red-500">{myVideos.length} فيديو</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">تاريخ الانضمام:</span>
-                <span className="text-gray-300 text-xs flex items-center gap-1">
+                <span className="text-[var(--yt-text-2)]">تاريخ الانضمام:</span>
+                <span className="text-[var(--yt-text)] text-xs flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-neutral-500" />
                   <span>{currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString('ar-EG') : '—'}</span>
                 </span>
               </div>
             </div>
 
-            <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 space-y-2">
+            <div className="bg-[var(--yt-bg-elev)] p-4 rounded-xl border border-[var(--yt-border)] space-y-2">
               <span className="text-xs text-green-500 font-bold block">🔒 اتصال مشفر وآمن</span>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--yt-text-2)] leading-relaxed">
                 حسابك محمي بالكامل ويتم تشفير كلمات المرور الخاصة بك على خوادم قاعدة بيانات يوتيوب طبق الأصل.
               </p>
             </div>
           </div>
 
           {/* Videos currently uploaded by user column */}
-          <div className="lg:col-span-2 bg-[#121212] rounded-2xl p-5 border border-neutral-800 flex flex-col min-h-[300px]">
-            <h3 className="text-sm font-black text-gray-400 border-b border-neutral-800 pb-2 flex items-center gap-2 mb-4">
+          <div className="lg:col-span-2 bg-[var(--yt-bg-elev)] rounded-2xl p-5 border border-[var(--yt-border)] flex flex-col min-h-[300px]">
+            <h3 className="text-sm font-black text-[var(--yt-text-2)] border-b border-[var(--yt-border)] pb-2 flex items-center gap-2 mb-4">
               <Film className="w-4 h-4 text-red-500" />
               <span>فيديوهاتك المرفوعة لقاعدة البيانات ({myVideos.length})</span>
             </h3>
@@ -562,8 +562,8 @@ export default function AccountView({
               <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
                 <Video className="w-12 h-12 text-neutral-700 animate-bounce" />
                 <div>
-                  <h4 className="font-bold text-gray-300">لم ترفع أي فيديو بقناتك بعد</h4>
-                  <p className="text-xs text-gray-500 mt-1 max-w-sm">
+                  <h4 className="font-bold text-[var(--yt-text)]">لم ترفع أي فيديو بقناتك بعد</h4>
+                  <p className="text-xs text-[var(--yt-text-2)] mt-1 max-w-sm">
                     اضغط على زر "رفع فيديو" في الأعلى لنشر أول مقاطعك حياً على قاعدة البيانات المشتركة بين الجميع!
                   </p>
                 </div>
@@ -574,7 +574,7 @@ export default function AccountView({
                   <div
                     key={vid.id}
                     onClick={() => onSelectVideo(vid)}
-                    className="p-3 bg-neutral-900 hover:bg-[#1a1a1a] rounded-xl border border-neutral-800/80 cursor-pointer group flex gap-3 transition-all"
+                    className="p-3 bg-[var(--yt-bg-elev)] hover:bg-[#1a1a1a] rounded-xl border border-[var(--yt-border)]/80 cursor-pointer group flex gap-3 transition-all"
                   >
                     <div className="relative w-24 shrink-0 aspect-video rounded-md overflow-hidden bg-black">
                       <img 
@@ -588,7 +588,7 @@ export default function AccountView({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
-                        <h4 className="text-xs font-bold line-clamp-2 text-white group-hover:text-red-400 transition-colors leading-relaxed">
+                        <h4 className="text-xs font-bold line-clamp-2 text-[var(--yt-text)] group-hover:text-[var(--yt-red)] transition-colors leading-relaxed">
                           {vid.title}
                         </h4>
                         <button
@@ -606,13 +606,13 @@ export default function AccountView({
                               }
                             }
                           }}
-                          className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all disabled:cursor-not-allowed"
+                          className="p-1.5 text-[var(--yt-text-2)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all disabled:cursor-not-allowed"
                           title="حذف الفيديو نهائياً"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-2 text-[10px] text-gray-400">
+                      <div className="flex items-center gap-1.5 mt-2 text-[10px] text-[var(--yt-text-2)]">
                         <span className="bg-red-500/10 text-red-500 px-1 rounded text-[9px] font-bold">{vid.category}</span>
                         <span>•</span>
                         <span>{vid.views}</span>
@@ -635,15 +635,15 @@ export default function AccountView({
     <div className="max-w-md mx-auto space-y-6 my-8" id="auth-and-offline-container">
       
       {/* Offline Mode Controller Card when Logged Out */}
-      <div className="bg-[#121212] border border-neutral-800 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-lg text-center" id="offline-mode-control-card-logged-out">
+      <div className="bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-lg text-center" id="offline-mode-control-card-logged-out">
         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
           isOffline ? 'bg-red-600/10 text-red-500' : 'bg-green-600/10 text-green-500'
         }`}>
           {isOffline ? <CloudOff className="w-5 h-5 animate-pulse" /> : <Wifi className="w-5 h-5" />}
         </div>
         <div>
-          <h3 className="font-bold text-sm text-white">إعدادات الاتصال بالإنترنت</h3>
-          <p className="text-xs text-gray-400 mt-1 max-w-xs leading-relaxed">
+          <h3 className="font-bold text-sm text-[var(--yt-text)]">إعدادات الاتصال بالإنترنت</h3>
+          <p className="text-xs text-[var(--yt-text-2)] mt-1 max-w-xs leading-relaxed">
             {isOffline 
               ? 'أنت تتصفح حالياً بوضع عدم الاتصال بالشبكة (أوفلاين)' 
               : 'أنت متصل بالإنترنت وموصول بقاعدة البيانات المشتركة'
@@ -674,17 +674,17 @@ export default function AccountView({
         </button>
       </div>
 
-      <div className="bg-[#121212] border border-neutral-800 rounded-2xl p-6 md:p-8 space-y-6 shadow-2xl animate-fade-in" id="auth-box-container">
+      <div className="bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-2xl p-6 md:p-8 space-y-6 shadow-2xl animate-fade-in" id="auth-box-container">
       
       {/* Visual Header Branding */}
       <div className="text-center space-y-1.5">
         <div className="inline-flex items-center justify-center w-12 h-9 bg-red-600 rounded-xl mb-2">
           <div className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-r-[8px] border-r-white transform -translate-x-[1px]"></div>
         </div>
-        <h2 className="text-xl font-black text-white">
+        <h2 className="text-xl font-black text-[var(--yt-text)]">
           {isRegister ? 'إنشاء حساب صانع محتوى' : 'تسجيل الدخول لقناة يوتيوب'}
         </h2>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-[var(--yt-text-2)]">
           {isRegister 
             ? 'احصل على قناتك الشخصية مجاناً الآن وابدأ برفع ونشر الفيديوهات!' 
             : 'قم بتسجيل الدخول لتستطيع رفع المقاطع والتفاعل بالتعليقات والإعجابات حياً!'
@@ -693,11 +693,11 @@ export default function AccountView({
       </div>
 
       {/* Auth Toggle Tabs (with exact glowing underscore / شخطه تحت) */}
-      <div className="grid grid-cols-2 border-b border-neutral-800 relative" id="auth-tabs">
+      <div className="grid grid-cols-2 border-b border-[var(--yt-border)] relative" id="auth-tabs">
         <button
           onClick={() => { setIsRegister(false); resetForm(); }}
           className={`py-3 text-sm font-bold transition-all relative ${
-            !isRegister ? 'text-white' : 'text-gray-400 hover:text-gray-200'
+            !isRegister ? 'text-[var(--yt-text)]' : 'text-[var(--yt-text-2)] hover:text-[var(--yt-text)]'
           }`}
         >
           <span>تسجيل الدخول</span>
@@ -709,7 +709,7 @@ export default function AccountView({
         <button
           onClick={() => { setIsRegister(true); resetForm(); }}
           className={`py-3 text-sm font-bold transition-all relative ${
-            isRegister ? 'text-white' : 'text-gray-400 hover:text-gray-200'
+            isRegister ? 'text-[var(--yt-text)]' : 'text-[var(--yt-text-2)] hover:text-[var(--yt-text)]'
           }`}
         >
           <span>إنشاء حساب جديد</span>
@@ -737,8 +737,8 @@ export default function AccountView({
         
         {isRegister && (
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-400">اسم المستخدم (القناة)</label>
-            <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 focus-within:border-red-600 transition-all text-right">
+            <label className="text-xs font-bold text-[var(--yt-text-2)]">اسم المستخدم (القناة)</label>
+            <div className="flex items-center bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-xl px-3.5 py-2.5 focus-within:border-red-600 transition-all text-right">
               <User className="w-4 h-4 text-neutral-500 shrink-0 ml-2" />
               <input
                 key="register-username-input-element"
@@ -747,15 +747,15 @@ export default function AccountView({
                 value={username || ''}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="مثال: عرب تيك"
-                className="w-full bg-transparent focus:outline-none text-sm text-white"
+                className="w-full bg-transparent focus:outline-none text-sm text-[var(--yt-text)]"
               />
             </div>
           </div>
         )}
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-400">البريد الإلكتروني</label>
-          <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 focus-within:border-red-600 transition-all text-right">
+          <label className="text-xs font-bold text-[var(--yt-text-2)]">البريد الإلكتروني</label>
+          <div className="flex items-center bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-xl px-3.5 py-2.5 focus-within:border-red-600 transition-all text-right">
             <Mail className="w-4 h-4 text-neutral-500 shrink-0 ml-2" />
             <input
               key="auth-email-input-element"
@@ -764,15 +764,15 @@ export default function AccountView({
               value={email || ''}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
-              className="w-full bg-transparent focus:outline-none text-sm text-white text-left"
+              className="w-full bg-transparent focus:outline-none text-sm text-[var(--yt-text)] text-left"
               dir="ltr"
             />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-400">كلمة المرور المشفرة</label>
-          <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 focus-within:border-red-600 transition-all text-right">
+          <label className="text-xs font-bold text-[var(--yt-text-2)]">كلمة المرور المشفرة</label>
+          <div className="flex items-center bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-xl px-3.5 py-2.5 focus-within:border-red-600 transition-all text-right">
             <Lock className="w-4 h-4 text-neutral-500 shrink-0 ml-2" />
             <input
               key="auth-password-input-element"
@@ -782,7 +782,7 @@ export default function AccountView({
               value={password || ''}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••••"
-              className="w-full bg-transparent focus:outline-none text-sm text-white text-left"
+              className="w-full bg-transparent focus:outline-none text-sm text-[var(--yt-text)] text-left"
               dir="ltr"
             />
           </div>
@@ -805,7 +805,7 @@ export default function AccountView({
 
       {/* Security disclaimer footer */}
       <div className="text-center pt-2">
-        <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 font-bold justify-center">
+        <span className="inline-flex items-center gap-1 text-[10px] text-[var(--yt-text-2)] font-bold justify-center">
           <Shield className="w-3.5 h-3.5 text-red-600" />
           تطبيق يوتيوب صُنع لغرض المحاكاة الواقعية وموصول بقاعدة بيانات Express
         </span>
