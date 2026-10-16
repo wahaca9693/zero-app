@@ -217,14 +217,79 @@ export const updateUserProfile = async (uid, data, avatarFile, bannerFile) => {
 };
 
 // VIDEOS
-export const getVideos = async () => {
+export const getVideos = async (uid?: string) => {
   try {
-    const res = await fetch(`${API_BASE}/videos`);
+    const q = uid ? `?uid=${encodeURIComponent(uid)}` : '';
+    const res = await fetch(`${API_BASE}/videos${q}`);
     if (!res.ok) throw res;
     return await res.json();
   } catch (e) {
     await handleApiError(e);
   }
+};
+
+// YouTube-style staged upload, step 1: send the raw file with REAL XHR
+// progress events (fetch can't report upload progress).
+export const stageUpload = (
+  videoFile: File,
+  thumbnailFile: File | null,
+  onProgress: (pct: number) => void,
+): Promise<{ videoPath: string; src: string; thumbPath: string | null; thumbnail: string | null; originalName: string; size: number }> => {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('video', videoFile);
+    if (thumbnailFile) formData.append('thumbnail', thumbnailFile);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/uploads`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch { reject(new Error('رد غير صالح من الخادم')); }
+      } else {
+        try { reject(new Error(JSON.parse(xhr.responseText).error || 'فشل الرفع')); }
+        catch { reject(new Error('فشل رفع الملف')); }
+      }
+    };
+    xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع'));
+    xhr.send(formData);
+  });
+};
+
+// Stage a thumbnail image alone.
+export const stageThumbnail = (thumbnailFile: File): Promise<{ thumbPath: string; thumbnail: string }> => {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('thumbnail', thumbnailFile);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/uploads/thumbnail`);
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch { reject(new Error('رد غير صالح من الخادم')); }
+      } else { reject(new Error('فشل رفع الصورة')); }
+    };
+    xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع'));
+    xhr.send(formData);
+  });
+};
+export const publishVideo = async (uid: string, data: {
+  title: string; description: string; category: string; isShort: boolean;
+  duration: string; videoPath: string; thumbPath: string | null;
+  visibility: 'public' | 'unlisted' | 'private';
+}) => {
+  const res = await fetch(`${API_BASE}/videos/publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uid, ...data }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'فشل نشر الفيديو');
+  }
+  return res.json();
 };
 
 export const uploadVideo = async (uid, data, videoFile, thumbnailFile) => {

@@ -184,9 +184,13 @@ async function initDB() {
         likesCount INTEGER DEFAULT 0,
         likes TEXT,
         videoPath TEXT,
-        thumbPath TEXT
+        thumbPath TEXT,
+        visibility TEXT DEFAULT 'public'
       )
     `);
+
+    // Safe migration for DBs created before the visibility column existed
+    try { await db.execute(`ALTER TABLE videos ADD COLUMN visibility TEXT DEFAULT 'public'`); } catch {}
     
     // Views table - track each view with IP and timestamp
     await db.execute(`
@@ -221,10 +225,14 @@ async function initDB() {
 // API Routes
 app.get('/api/v1/videos', async (req, res) => {
   try {
+    // YouTube-style visibility: public for everyone; unlisted/private only for the owner
+    const uid = (req.query.uid as string) || '';
     const result = await db.execute(`
       SELECT v.*, u.avatar as currentAvatar
       FROM videos v
       LEFT JOIN users u ON v.userId = u.uid
+      WHERE COALESCE(v.visibility, 'public') = 'public'
+         OR v.userId = '${uid.replace(/'/g, "''")}'
       ORDER BY v.uploadTimestamp DESC
     `);
     const videos = result.rows.map(row => ({
@@ -242,7 +250,7 @@ app.get('/api/v1/videos', async (req, res) => {
 
 app.post('/api/v1/videos', upload.fields([{ name: 'video' }, { name: 'thumbnail' }]), async (req, res) => {
   try {
-    const { uid, title, description, category, isShort, duration } = req.body;
+    const { uid, title, description, category, isShort, duration, visibility } = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     
     const vId = `vid_${Date.now()}`;
@@ -277,17 +285,104 @@ app.post('/api/v1/videos', upload.fields([{ name: 'video' }, { name: 'thumbnail'
       likesCount: 0,
       likes: [] as string[],
       videoPath: videoFile?.filename || null,
-      thumbPath: thumbFile?.filename || null
+      thumbPath: thumbFile?.filename || null,
+      visibility: ['public', 'unlisted', 'private'].includes(req.body.visibility) ? req.body.visibility : 'public'
     };
 
     await db.execute({
-      sql: `INSERT INTO videos (id, title, description, category, isShort, duration, src, thumbnail, channelName, channelAvatar, userId, uploadTimestamp, uploadDate, viewsCount, likesCount, likes, videoPath, thumbPath)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO videos (id, title, description, category, isShort, duration, src, thumbnail, channelName, channelAvatar, userId, uploadTimestamp, uploadDate, viewsCount, likesCount, likes, videoPath, thumbPath, visibility)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         newVideo.id, newVideo.title, newVideo.description, newVideo.category, newVideo.isShort ? 1 : 0, newVideo.duration,
         newVideo.src, newVideo.thumbnail, newVideo.channelName, newVideo.channelAvatar, newVideo.userId,
         newVideo.uploadTimestamp, newVideo.uploadDate, 0, 0, '[]',
-        newVideo.videoPath, newVideo.thumbPath
+        newVideo.videoPath, newVideo.thumbPath, newVideo.visibility
+      ]
+    });
+
+    res.json({ ...newVideo, likes: 0, views: '0' });
+  } catch (err) {
+    res.status(500).json({ error: (err as any).message });
+  }
+});
+
+// YouTube-style staged upload, step 1: receive the raw file FIRST (with real
+// XHR progress on the client), metadata comes later at publish time.
+app.post('/api/v1/uploads', upload.fields([{ name: 'video' }, { name: 'thumbnail' }]), async (req, res) => {
+  try {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const videoFile = files.video?.[0];
+    if (!videoFile) return res.status(400).json({ error: 'ملف الفيديو مطلوب' });
+    const thumbFile = files.thumbnail?.[0];
+    res.json({
+      videoPath: `/uploads/${videoFile.filename}`,
+      src: `/uploads/${videoFile.filename}`,
+      thumbPath: thumbFile ? `/uploads/${thumbFile.filename}` : null,
+      thumbnail: thumbFile ? `/uploads/${thumbFile.filename}` : null,
+      originalName: videoFile.originalname,
+      size: videoFile.size,
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as any).message });
+  }
+});
+
+// Stage a thumbnail image alone (used when the user picks a custom/auto thumbnail at publish time)
+app.post('/api/v1/uploads/thumbnail', upload.fields([{ name: 'thumbnail' }]), async (req, res) => {
+  try {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const thumbFile = files.thumbnail?.[0];
+    if (!thumbFile) return res.status(400).json({ error: 'ملف الصورة مطلوب' });
+    res.json({
+      thumbPath: `/uploads/${thumbFile.filename}`,
+      thumbnail: `/uploads/${thumbFile.filename}`,
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as any).message });
+  }
+});
+
+// YouTube-style staged upload, step 2: publish metadata + visibility for
+// previously staged files. Creates the real video row (views/likes/subs all real).
+app.post('/api/v1/videos/publish', async (req, res) => {
+  try {
+    const { uid, title, description, category, isShort, duration, videoPath, thumbPath, visibility } = req.body as any;
+    if (!uid || !title?.trim()) return res.status(400).json({ error: 'البيانات ناقصة' });
+    if (!videoPath) return res.status(400).json({ error: 'ملف الفيديو غير مرفوع بعد' });
+
+    const userRes = await db.execute({ sql: 'SELECT * FROM users WHERE uid = ?', args: [uid] });
+    const user = userRes.rows[0] as any;
+    if (!user) return res.status(401).json({ error: 'يجب تسجيل الدخول لنشر الفيديو' });
+
+    const vis = ['public', 'unlisted', 'private'].includes(visibility) ? visibility : 'public';
+    const vId = `vid_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const newVideo = {
+      id: vId,
+      title: String(title).trim(),
+      description: String(description || '').trim(),
+      category: category || 'تقنية',
+      isShort: isShort === true || isShort === 'true',
+      duration: duration || '00:00',
+      src: videoPath,
+      thumbnail: thumbPath || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=60',
+      channelName: user.username || 'GUEST',
+      channelAvatar: (user.avatar as string) || DEFAULT_AVATAR,
+      userId: uid,
+      uploadTimestamp: Date.now(),
+      uploadDate: new Date().toLocaleDateString('ar-EG'),
+      visibility: vis,
+      videoPath: videoPath.replace('/uploads/', ''),
+      thumbPath: thumbPath ? thumbPath.replace('/uploads/', '') : null,
+    };
+
+    await db.execute({
+      sql: `INSERT INTO videos (id, title, description, category, isShort, duration, src, thumbnail, channelName, channelAvatar, userId, uploadTimestamp, uploadDate, viewsCount, likesCount, likes, videoPath, thumbPath, visibility)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        newVideo.id, newVideo.title, newVideo.description, newVideo.category, newVideo.isShort ? 1 : 0, newVideo.duration,
+        newVideo.src, newVideo.thumbnail, newVideo.channelName, newVideo.channelAvatar, newVideo.userId,
+        newVideo.uploadTimestamp, newVideo.uploadDate, 0, 0, '[]',
+        newVideo.videoPath, newVideo.thumbPath, newVideo.visibility,
       ]
     });
 

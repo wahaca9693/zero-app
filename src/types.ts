@@ -26,6 +26,7 @@ export interface Video {
   liked?: boolean;
   subscribed?: boolean;
   userId?: string; // owner uid from the server
+  visibility?: 'public' | 'unlisted' | 'private';
 }
 
 export interface DownloadedItem {
