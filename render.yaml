@@ -1,0 +1,17 @@
+# Render free-tier blueprint for the zero-app backend (Express + Turso)
+# Deploy: Render dashboard -> New -> Blueprint -> connect wahaca9693/zero-app
+services:
+  - type: web
+    name: zero-app-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.cjs
+    envVars:
+      - key: TURSO_DATABASE_URL
+        sync: false # set in Render dashboard (from Turso)
+      - key: TURSO_AUTH_TOKEN
+        sync: false # set in Render dashboard (from Turso)
+      - key: ADMIN_SECRET
+        generateValue: true
+    healthCheckPath: /api/v1/videos

@@ -4,7 +4,9 @@ import {
 } from 'firebase/auth';
 
 // Simple Turso-based authentication (email + password, verified server-side with scrypt)
-const API_BASE = '/api/v1';
+// Backend base URL: set VITE_API_URL (e.g. https://zero-app-backend.onrender.com)
+// when the API runs on a separate host. Defaults to same-origin (Vercel).
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/v1`;
 
 const SIMPLE_AUTH_KEY = 'youtube_auth_user';
 
