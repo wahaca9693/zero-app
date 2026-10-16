@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Shield, Sparkles, LogOut, Film, Trash2, Heart, History, Video, Calendar, ArrowLeft, Wifi, CloudOff, Edit3, Camera, Image, Save, X, RefreshCw } from 'lucide-react';
+import { User, Mail, Lock, Shield, Sparkles, LogOut, Film, Trash2, Heart, History, Video, Calendar, ArrowLeft, Edit3, Camera, Image, Save, X, RefreshCw } from 'lucide-react';
 
 import { registerUser, loginUser, updateUserProfile, getUserProfile, simpleTursoRegister, simpleTursoLogin, simpleTursoLogout, getSimpleAuthUser } from '../services/db';
 import { wipeDatabase } from '../utils/wipeDatabase';
@@ -464,47 +464,6 @@ export default function AccountView({
           </form>
         )}
 
-        {/* Offline Mode Controller Card */}
-        <div className="bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg" id="offline-mode-control-card-logged-in">
-          <div className="flex items-center gap-3.5 text-right w-full md:w-auto">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              isOffline ? 'bg-red-600/10 text-red-500' : 'bg-green-600/10 text-green-500'
-            }`}>
-              {isOffline ? <CloudOff className="w-5 h-5 animate-pulse" /> : <Wifi className="w-5 h-5" />}
-            </div>
-            <div>
-              <h3 className="font-bold text-sm text-[var(--yt-text)]">إعدادات الاتصال بالإنترنت</h3>
-              <p className="text-xs text-[var(--yt-text-2)] mt-0.5 leading-relaxed">
-                {isOffline 
-                  ? 'أنت تتصفح حالياً بوضع عدم الاتصال بالشبكة (أوفلاين) - لن تعمل سوى الفيديوهات المحملة مسبقاً' 
-                  : 'أنت متصل بالإنترنت وموصول بقاعدة البيانات الحية'
-                }
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={onToggleOffline}
-            className={`w-full md:w-auto px-5 py-2.5 rounded-xl font-bold text-xs select-none transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 border ${
-              isOffline
-                ? 'bg-red-600 text-white border-red-500 hover:bg-red-700 shadow-md shadow-red-600/20'
-                : 'bg-green-600/10 text-green-500 border-green-500 hover:bg-green-600/20'
-            }`}
-          >
-            {isOffline ? (
-              <>
-                <Wifi className="w-4 h-4" />
-                <span>تبديل إلى: متصل بالإنترنت (تشغيل الشبكة)</span>
-              </>
-            ) : (
-              <>
-                <CloudOff className="w-4 h-4" />
-                <span>تبديل إلى: وضع أوفلاين (وضع الطيران)</span>
-              </>
-            )}
-          </button>
-        </div>
-
         {/* Channels Grid Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
@@ -633,46 +592,6 @@ export default function AccountView({
   // Auth screen layout (Sign In / Register)
   return (
     <div className="max-w-md mx-auto space-y-6 my-8" id="auth-and-offline-container">
-      
-      {/* Offline Mode Controller Card when Logged Out */}
-      <div className="bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-lg text-center" id="offline-mode-control-card-logged-out">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-          isOffline ? 'bg-red-600/10 text-red-500' : 'bg-green-600/10 text-green-500'
-        }`}>
-          {isOffline ? <CloudOff className="w-5 h-5 animate-pulse" /> : <Wifi className="w-5 h-5" />}
-        </div>
-        <div>
-          <h3 className="font-bold text-sm text-[var(--yt-text)]">إعدادات الاتصال بالإنترنت</h3>
-          <p className="text-xs text-[var(--yt-text-2)] mt-1 max-w-xs leading-relaxed">
-            {isOffline 
-              ? 'أنت تتصفح حالياً بوضع عدم الاتصال بالشبكة (أوفلاين)' 
-              : 'أنت متصل بالإنترنت وموصول بقاعدة البيانات المشتركة'
-            }
-          </p>
-        </div>
-
-        <button
-          onClick={onToggleOffline}
-          type="button"
-          className={`w-full px-4 py-2 rounded-xl font-bold text-xs select-none transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 border ${
-            isOffline
-              ? 'bg-red-600 text-white border-red-500 hover:bg-red-700 shadow-md shadow-red-600/20'
-              : 'bg-green-600/10 text-green-500 border-green-500 hover:bg-green-600/20'
-          }`}
-        >
-          {isOffline ? (
-            <>
-              <Wifi className="w-3.5 h-3.5" />
-              <span>تبديل كلي للاتصال السحابي بالإنترنت (تشغيل)</span>
-            </>
-          ) : (
-            <>
-              <CloudOff className="w-3.5 h-3.5" />
-              <span>تبديل كلي كوضع أوفلاين (وضع الطيران)</span>
-            </>
-          )}
-        </button>
-      </div>
 
       <div className="bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] rounded-2xl p-6 md:p-8 space-y-6 shadow-2xl animate-fade-in" id="auth-box-container">
       

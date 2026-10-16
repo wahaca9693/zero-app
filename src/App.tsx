@@ -152,7 +152,7 @@ export default function App() {
         }
 
         // Fetch videos from Firebase
-        const sVideos = await getVideos();
+        const sVideos = await getVideos(currentUser?.user_id);
         setVideosList(sVideos as any);
 
         // --- Deep Linking Optimization ---
@@ -353,7 +353,7 @@ export default function App() {
     setActiveTab('home');
 
     // Reload videos list to update personalized like indicator maps
-    const sVideos = await getVideos();
+    const sVideos = await getVideos(currentUser?.user_id);
     setVideosList(sVideos as any);
   };
 
@@ -368,7 +368,7 @@ export default function App() {
     setActiveTab('account'); // land on the login form so the logout is visible
 
     // Reload default videos
-    const sVideos = await getVideos();
+    const sVideos = await getVideos(currentUser?.user_id);
     setVideosList(sVideos as any);
   };
 
