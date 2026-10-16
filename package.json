@@ -14,10 +14,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    
-    "@google/genai": "^2.4.0",
     "@libsql/client": "^0.17.3",
-    
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "axios": "^1.16.1",
@@ -25,7 +22,6 @@
     "express": "^4.21.2",
     "firebase": "^12.13.0",
     "lucide-react": "^0.546.0",
-    "motion": "^12.23.24",
     "multer": "^2.1.1",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",

@@ -6,11 +6,14 @@ import multer from 'multer';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import crypto from 'crypto';
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+// Trust the first proxy (Railway / Vercel / nginx...) so req.ip is the real client IP
+app.set('trust proxy', 1);
+const PORT = Number(process.env.PORT) || 3000;
 
 // Setup Turso Client
 const db = createClient({
@@ -34,7 +37,24 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 500 * 1024 * 1024, files: 2 },
+  fileFilter: (req, file, cb) => {
+    // Only allow real video/image uploads — blocks scripts & executables
+    const field = file.fieldname;
+    const isVideo = file.mimetype.startsWith('video/');
+    const isImage = file.mimetype.startsWith('image/');
+    const ok =
+      (field === 'video' && isVideo) ||
+      (['thumbnail', 'avatar', 'banner'].includes(field) && isImage);
+    if (!ok) {
+      cb(new Error(`نوع الملف غير مسموح: ${file.mimetype || 'غير معروف'}`));
+      return;
+    }
+    cb(null, true);
+  }
+});
 
 app.use(express.json());
 
@@ -137,6 +157,12 @@ async function initDB() {
         isVPN INTEGER DEFAULT 0
       )
     `);
+    // Migration: password-hash column for real login (older databases lack it)
+    try {
+      await db.execute('ALTER TABLE users ADD COLUMN passwordHash TEXT');
+    } catch {
+      /* column already exists */
+    }
     
     // Videos table - with real view/like tracking
     await db.execute(`
@@ -205,7 +231,8 @@ app.get('/api/v1/videos', async (req, res) => {
       ...row,
       channelAvatar: row.currentAvatar || row.channelAvatar || DEFAULT_AVATAR,
       isShort: Boolean(row.isShort),
-      likes: JSON.parse(row.likes as string || '[]')
+      likes: parseLikes(row.likes),
+      views: String(row.viewsCount ?? 0)
     }));
     res.json(videos);
   } catch (err) {
@@ -264,7 +291,7 @@ app.post('/api/v1/videos', upload.fields([{ name: 'video' }, { name: 'thumbnail'
       ]
     });
 
-    res.json(newVideo);
+    res.json({ ...newVideo, likes: 0, views: '0' });
   } catch (err) {
     res.status(500).json({ error: (err as any).message });
   }
@@ -272,18 +299,119 @@ app.post('/api/v1/videos', upload.fields([{ name: 'video' }, { name: 'thumbnail'
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60';
 
-app.post('/api/v1/users', async (req, res) => {
-  const { uid, username, email } = req.body;
+// Normalize the stored likes JSON array into a plain count for the frontend
+function parseLikes(raw: unknown): number {
   try {
+    const arr = JSON.parse((raw as string) || '[]');
+    return Array.isArray(arr) ? arr.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+app.post('/api/v1/users', async (req, res) => {
+  const { uid, username, email, password } = req.body as { uid?: string; username?: string; email?: string; password?: string };
+  if (!uid || !username?.trim() || !email?.trim()) {
+    return res.status(400).json({ error: 'البيانات ناقصة: uid و username و email مطلوبة' });
+  }
+  try {
+    // Hash the password with scrypt — only stored for brand-new accounts, never raw
+    let passwordHash: string | null = null;
+    if (password) {
+      const salt = crypto.randomBytes(16).toString('hex');
+      const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+      passwordHash = `${salt}:${hash}`;
+    }
+    const clientIp = (req as any).clientIp || 'unknown';
     await db.execute({
-      sql: `INSERT INTO users (uid, username, email, avatar, banner, subscriptions) 
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(uid) DO UPDATE SET 
+      sql: `INSERT INTO users (uid, username, email, avatar, banner, subscriptions, passwordHash, ipAddress, createdAt, lastLogin)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(uid) DO UPDATE SET
               username = excluded.username,
-              email = excluded.email`,
-      args: [uid, username, email, DEFAULT_AVATAR, '', '[]']
+              email = excluded.email,
+              lastLogin = excluded.lastLogin`,
+      args: [uid, username.trim(), email.trim().toLowerCase(), DEFAULT_AVATAR, '', '[]', passwordHash, clientIp, Date.now(), Date.now()]
+    });
+    // Never overwrite an existing password hash or IP on re-sync
+    await db.execute({
+      sql: `UPDATE users SET
+              passwordHash = COALESCE(passwordHash, ?),
+              ipAddress = COALESCE(ipAddress, ?)
+            WHERE uid = ?`,
+      args: [passwordHash, clientIp, uid]
     });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as any).message });
+  }
+});
+
+// Public lookup by email (used by the login form — 404 when unknown).
+// NOTE: defined BEFORE '/api/v1/users/:uid' so Express doesn't treat 'by-email' as a uid.
+app.get('/api/v1/users/by-email', async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'email is required' });
+    const result = await db.execute({
+      sql: 'SELECT * FROM users WHERE lower(email) = ?',
+      args: [email]
+    });
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = result.rows[0];
+    res.json({
+      ...user,
+      avatar: user.avatar || DEFAULT_AVATAR,
+      banner: user.banner || '',
+      subscriptions: JSON.parse(user.subscriptions as string || '[]')
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as any).message });
+  }
+});
+
+// Real password login (scrypt, timing-safe compare)
+app.post('/api/v1/users/login', async (req, res) => {
+  try {
+    const { email, password } = req.body as { email?: string; password?: string };
+    if (!email?.trim() || !password) {
+      return res.status(400).json({ error: 'البريد وكلمة المرور مطلوبان' });
+    }
+    const result = await db.execute({
+      sql: 'SELECT * FROM users WHERE lower(email) = ?',
+      args: [email.trim().toLowerCase()]
+    });
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: '🔐 خطأ في بيانات الدخول، يرجى التأكد من البريد الإلكتروني وكلمة المرور.' });
+    }
+    const user = result.rows[0];
+
+    // Legacy accounts created before passwords existed: first login claims the account
+    if (!user.passwordHash) {
+      const salt = crypto.randomBytes(16).toString('hex');
+      const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+      await db.execute({
+        sql: 'UPDATE users SET passwordHash = ?, lastLogin = ? WHERE uid = ?',
+        args: [`${salt}:${hash}`, Date.now(), user.uid]
+      });
+    } else {
+      const [salt, stored] = String(user.passwordHash).split(':');
+      const hash = crypto.scryptSync(String(password), salt || '', 64).toString('hex');
+      const ok = !!stored && stored.length === hash.length &&
+        crypto.timingSafeEqual(Buffer.from(stored, 'hex'), Buffer.from(hash, 'hex'));
+      if (!ok) {
+        return res.status(401).json({ error: '🔐 خطأ في بيانات الدخول، يرجى التأكد من البريد الإلكتروني وكلمة المرور.' });
+      }
+      await db.execute({ sql: 'UPDATE users SET lastLogin = ? WHERE uid = ?', args: [Date.now(), user.uid] });
+    }
+
+    res.json({
+      uid: user.uid,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar || DEFAULT_AVATAR,
+      banner: user.banner || '',
+      subscriptions: JSON.parse(user.subscriptions as string || '[]')
+    });
   } catch (err) {
     res.status(500).json({ error: (err as any).message });
   }
@@ -329,9 +457,13 @@ app.post('/api/v1/users/:uid/update', upload.fields([{ name: 'avatar' }, { name:
 
     if (files.avatar?.[0]) {
       avatarUrl = `/uploads/${files.avatar[0].filename}`;
+    } else if (req.body.avatarUrl) {
+      avatarUrl = String(req.body.avatarUrl);
     }
     if (files.banner?.[0]) {
       bannerUrl = `/uploads/${files.banner[0].filename}`;
+    } else if (req.body.bannerUrl) {
+      bannerUrl = String(req.body.bannerUrl);
     }
 
     await db.execute({
@@ -520,6 +652,14 @@ app.post('/api/v1/users/:uid/subscribe', async (req, res) => {
 
 app.post('/api/v1/admin/wipe', async (req, res) => {
   try {
+    // Protected: requires the server-side ADMIN_SECRET — never open to the public
+    const secret = process.env.ADMIN_SECRET;
+    if (!secret) {
+      return res.status(503).json({ error: 'لم يتم إعداد كلمة مرور الإدارة (ADMIN_SECRET) على الخادم' });
+    }
+    if (req.headers['x-admin-secret'] !== secret) {
+      return res.status(403).json({ error: 'غير مصرح: كلمة مرور الإدارة غير صحيحة' });
+    }
     await db.execute('DELETE FROM videos');
     await db.execute('DELETE FROM users');
     await db.execute('DELETE FROM comments');
@@ -547,11 +687,28 @@ async function downloadFile(url: string, destPath: string): Promise<string> {
   });
 
   const writer = fs.createWriteStream(destPath);
+  const MAX_BYTES = 1024 * 1024 * 1024; // 1GB safety cap for imported files
+  let downloaded = 0;
+  response.data.on('data', (chunk: Buffer) => {
+    downloaded += chunk.length;
+    if (downloaded > MAX_BYTES) {
+      response.data.destroy();
+      writer.destroy();
+    }
+  });
   response.data.pipe(writer);
 
   return new Promise((resolve, reject) => {
-    writer.on('finish', () => resolve(destPath));
+    writer.on('finish', () => {
+      if (downloaded > MAX_BYTES) {
+        fs.unlink(destPath, () => {});
+        reject(new Error('الملف أكبر من الحد المسموح (1GB)'));
+      } else {
+        resolve(destPath);
+      }
+    });
     writer.on('error', reject);
+    response.data.on('error', reject);
   });
 }
 
@@ -667,12 +824,21 @@ app.post('/api/v1/videos/import', async (req, res) => {
       ]
     });
 
-    res.json(newVideo);
+    res.json({ ...newVideo, likes: 0, views: '0' });
   } catch (err) {
     console.error('Import Error:', err);
     res.status(500).json({ error: (err as any).message });
   }
 });
+
+// Multer / upload error handler -> clean JSON instead of a crash
+app.use(((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!err) return next();
+  if (err instanceof multer.MulterError || /نوع الملف غير مسموح/.test(err.message || '')) {
+    return res.status(400).json({ error: `فشل الرفع: ${err.message}` });
+  }
+  return next(err);
+}) as express.ErrorRequestHandler);
 
 // Catch-all for API routes before SPA fallback
 app.all('/api/v1/*', (req, res) => {
