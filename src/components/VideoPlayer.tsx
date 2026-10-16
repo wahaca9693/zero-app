@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ThumbsUp, ThumbsDown, Bookmark, ChevronLeft, X, Download, Check, Trash2, Share2, CornerUpLeft, MoreVertical, WifiOff, RefreshCw, Send, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ThumbsUp, ThumbsDown, Bookmark, ChevronLeft, X, Download, Check, Trash2, Share2, CornerUpLeft, MoreVertical, WifiOff, RefreshCw, Send } from 'lucide-react';
 import { 
   incrementView, toggleLikeVideo, getComments, addComment, toggleSubscriptionToUser, deleteVideo, getSimpleAuthUser 
 } from '../services/db';
@@ -262,6 +263,11 @@ export default function VideoPlayer({
   const isDownloaded = downloadStatus?.status === 'completed';
   const isDownloading = downloadStatus?.status === 'downloading';
   const downloadProgress = downloadStatus?.progress || 0;
+
+  // Autoplay follows the user setting (Settings > Playback)
+  const autoplayEnabled = (() => {
+    try { return localStorage.getItem('youtlibre_autoplay') !== '0'; } catch { return true; }
+  })();
   
   // Decide the source URL: if downloaded, use local Object URL, else use live url
   const videoSourceUrl = isDownloaded && downloadStatus?.blobUrl ? downloadStatus.blobUrl : video.src;
@@ -277,19 +283,19 @@ export default function VideoPlayer({
     .slice(0, 5);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-white pb-10" id={`video-player-container-${video.id}`}>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-[var(--yt-text)] pb-10" id={`video-player-container-${video.id}`}>
       {/* Right Column: Player, Video Info, Actions, Comments */}
       <div className="lg:col-span-2 space-y-4">
         {/* Playable Wrapper */}
-        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-lg border border-[#272727]">
+        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-lg border border-[var(--yt-border)]">
           {showOfflineUnsupported ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#141414] text-center p-6 space-y-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--yt-bg-elev)] text-center p-6 space-y-4">
               <div className="w-16 h-16 rounded-full bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500">
                 <WifiOff className="w-8 h-8" />
               </div>
               <div className="space-y-1.5 max-w-md">
                 <h3 className="text-lg font-bold">هذا الفيديو غير متوفر أوفلاين</h3>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-[var(--yt-text-2)]">
                   أنت مفعّل "وضع الطيران غير المتصل". لم يتم تحميل هذا الفيديو للاستعراض بلا إنترنت مسبقاً.
                 </p>
               </div>
@@ -317,7 +323,7 @@ export default function VideoPlayer({
                 ref={videoRef}
                 src={videoSourceUrl || undefined}
                 controls
-                autoPlay
+                autoPlay={autoplayEnabled}
                 className="w-full h-full"
                 poster={video.thumbnail || undefined}
                 playsInline
@@ -327,47 +333,61 @@ export default function VideoPlayer({
           )}
         </div>
 
-        {/* Video Title */}
-        <h1 className="text-base md:text-lg font-black leading-snug select-text text-right px-1 mt-3 text-white">{video.title}</h1>
+        {/* Video Title — YouTube watch style: 20px bold */}
+        <motion.h1
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="text-xl font-bold leading-snug select-text text-right px-1 mt-3 text-[var(--yt-text)]"
+        >
+          {video.title}
+        </motion.h1>
 
         {/* Dynamic Metadata Subtitle (views, upload date, tags, and clickable expandable trigger) */}
-        <div 
+        <div
           onClick={() => setShowDesc(!showDesc)}
-          className="text-xs text-gray-400 font-medium flex flex-wrap items-center gap-2 mt-1 px-1 cursor-pointer select-none hover:text-white transition-colors justify-start text-right"
+          className="text-sm text-[var(--yt-text)] font-medium flex flex-wrap items-center gap-2 mt-1 px-1 cursor-pointer select-none justify-start text-right"
           dir="rtl"
         >
           <span className="font-bold">{viewsText}</span>
-          <span className="text-gray-600">•</span>
-          <span>{video.uploadDate || 'قبل أيام'}</span>
-          <span className="text-gray-600">•</span>
-          <span className="text-red-500 font-semibold">#{video.category ? video.category.replace(/\s+/g, '_') : 'سينما'}</span>
-          <span className="text-white font-extrabold cursor-pointer hover:underline inline-flex items-center gap-0.5">
-            {showDesc ? ' ...عرض أقل' : ' ...المزيد'}
+          <span className="text-[var(--yt-text-2)]">•</span>
+          <span className="text-[var(--yt-text-2)]">{video.uploadDate || 'قبل أيام'}</span>
+          <span className="font-semibold text-[var(--yt-text)] cursor-pointer hover:underline inline-flex items-center gap-0.5">
+            {showDesc ? 'عرض أقل' : '...المزيد'}
           </span>
         </div>
 
-        {/* Expandable detailed description pane */}
+        {/* Expandable description — YouTube style box */}
+        <AnimatePresence>
         {showDesc && (
-          <div 
-            className="bg-[#181818] border border-neutral-800/80 p-4 rounded-2xl text-right animate-fade-in text-xs space-y-2.5 leading-relaxed text-gray-300 mb-2"
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+            className="overflow-hidden"
+          >
+          <div
+            className="bg-[var(--yt-chip)] p-3 rounded-xl text-right text-sm space-y-2 leading-relaxed text-[var(--yt-text)] mb-2"
             dir="rtl"
           >
-            <div className="font-extrabold text-white text-xs mb-1">وصف الفيديو التفصيلي:</div>
-            <p className="whitespace-pre-line text-xs font-medium leading-relaxed">{video.description}</p>
-            <div className="text-[10px] text-gray-500 pt-2 border-t border-neutral-800/60 flex items-center justify-between">
-              <span>القسم: {video.category}</span>
-              <span>رمز المقطع: {video.id}</span>
+            <div className="font-bold text-[var(--yt-text)] text-sm">
+              {viewsText} • {video.uploadDate || 'قبل أيام'} <span className="text-[var(--yt-blue)]">#{video.category ? video.category.replace(/\s+/g, '_') : 'فيديو'}</span>
             </div>
+            <p className="whitespace-pre-line text-sm leading-relaxed">{video.description}</p>
+            <button onClick={() => setShowDesc(false)} className="text-sm font-medium text-[var(--yt-text-2)] hover:text-[var(--yt-text)]">عرض أقل</button>
           </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Channels & Action Pill Bar Scrolling Strip */}
-        <div className="flex items-center gap-2.5 overflow-x-auto pb-3.5 pt-1.5 scrollbar-none justify-start select-none border-b border-neutral-900" dir="rtl">
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-3.5 pt-1.5 scrollbar-none justify-start select-none border-b border-[var(--yt-border)]" dir="rtl">
           {/* Channel Block & Subscribe Option */}
           <div className="flex items-center gap-2 shrink-0">
             <div 
               onClick={() => onChannelClick && onChannelClick(video.channelName)}
-              className="w-9 h-9 rounded-full overflow-hidden border border-[#272727] bg-[#3a3a3a] cursor-pointer hover:ring-2 hover:ring-red-500/50 transition-all shrink-0"
+              className="w-9 h-9 rounded-full overflow-hidden border border-[var(--yt-border)] bg-[var(--yt-chip-hover)] cursor-pointer hover:ring-2 hover:ring-red-500/50 transition-all shrink-0"
               title={`عرض ملف قناة ${video.channelName}`}
             >
               <img 
@@ -381,18 +401,18 @@ export default function VideoPlayer({
             <div className="flex flex-col text-right shrink-0">
               <span 
                 onClick={() => onChannelClick && onChannelClick(video.channelName)}
-                className="text-xs font-bold text-white hover:underline cursor-pointer truncate max-w-[100px]"
+                className="text-sm font-medium text-[var(--yt-text)] hover:underline cursor-pointer truncate max-w-[100px]"
               >
                 {video.channelName}
               </span>
-              <span className="text-[10px] text-gray-500">{subscribersText}</span>
+              <span className="text-[10px] text-[var(--yt-text-2)]">{subscribersText}</span>
             </div>
             
             <button
               onClick={handleSubscribe}
               className={`mr-1 px-3 py-1.5 text-[11px] font-black rounded-full transition-all active:scale-95 cursor-pointer shrink-0 ${
                 isSubscribed 
-                  ? 'bg-[#272727] text-gray-300 hover:bg-neutral-800 border border-neutral-800/60 font-bold flex items-center gap-1' 
+                  ? 'bg-[var(--yt-chip)] text-[var(--yt-text)] hover:bg-[var(--yt-chip-hover)] border border-[var(--yt-border)] font-bold flex items-center gap-1' 
                   : 'bg-white text-black hover:bg-gray-200'
               }`}
             >
@@ -409,11 +429,11 @@ export default function VideoPlayer({
           <div className="h-5 w-px bg-neutral-800 shrink-0 self-center mx-1"></div>
 
           {/* Unified Likes/Dislikes split pill */}
-          <div className="flex items-center bg-[#272727] border border-neutral-800/80 hover:bg-[#323232] rounded-full h-9 transition-colors shrink-0">
+          <div className="flex items-center bg-[var(--yt-chip)] border border-[var(--yt-border)] hover:bg-[var(--yt-chip-hover)] rounded-full h-9 transition-colors shrink-0">
             <button
               onClick={handleLike}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-all active:scale-95 rounded-r-full h-full ${
-                liked ? 'text-red-500 bg-red-500/5' : 'text-gray-300 hover:text-white'
+                liked ? 'text-red-500 bg-red-500/5' : 'text-[var(--yt-text)]'
               }`}
               id="btn-like-video-modified"
             >
@@ -424,7 +444,7 @@ export default function VideoPlayer({
             <button
               onClick={handleDislike}
               className={`flex items-center px-3 py-2 text-xs font-bold transition-all active:scale-95 rounded-l-full h-full ${
-                disliked ? 'text-neutral-400 bg-neutral-800' : 'text-gray-400 hover:text-white'
+                disliked ? 'text-[var(--yt-text-2)] bg-[var(--yt-chip-hover)]' : 'text-[var(--yt-text-2)]'
               }`}
             >
               <ThumbsDown className={`w-3.5 h-3.5 ${disliked ? 'fill-neutral-400 text-neutral-400' : ''}`} />
@@ -434,7 +454,7 @@ export default function VideoPlayer({
           {/* Share Pill */}
           <button
             onClick={() => setShowShareModal(true)}
-            className="flex items-center gap-1.5 px-3.5 h-9 bg-[#272727] hover:bg-[#323232] border border-neutral-800/65 rounded-full text-xs text-gray-300 hover:text-white shrink-0 font-bold transition-colors select-none cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 h-9 bg-[var(--yt-chip)] hover:bg-[var(--yt-chip-hover)] border border-[var(--yt-border)] rounded-full text-xs text-[var(--yt-text)] shrink-0 font-bold transition-colors select-none cursor-pointer"
           >
             <Share2 className="w-3.5 h-3.5 rotate-180" />
             <span>مشاركة</span>
@@ -445,7 +465,7 @@ export default function VideoPlayer({
             onClick={() => {
               if (onToggleSave) onToggleSave(video.id);
             }}
-            className={`flex items-center gap-1.5 px-3.5 h-9 ${isSaved ? 'bg-red-600 hover:bg-red-700 text-white border-transparent' : 'bg-[#272727] hover:bg-[#323232] text-gray-300 border border-neutral-800/65'} rounded-full text-xs hover:text-white shrink-0 font-bold transition-colors select-none cursor-pointer`}
+            className={`flex items-center gap-1.5 px-3.5 h-9 ${isSaved ? 'bg-red-600 hover:bg-red-700 text-white border-transparent' : 'bg-[var(--yt-chip)] hover:bg-[var(--yt-chip-hover)] text-[var(--yt-text)] border border-[var(--yt-border)]'} rounded-full text-xs shrink-0 font-bold transition-colors select-none cursor-pointer`}
           >
             <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-white' : ''}`} />
             <span>{isSaved ? 'محفوظ' : 'حفظ'}</span>
@@ -485,7 +505,7 @@ export default function VideoPlayer({
               disabled={isOffline}
               className={`flex items-center gap-1.5 px-3.5 h-9 text-xs font-bold rounded-full transition-all active:scale-95 border shrink-0 cursor-pointer ${
                 isOffline 
-                  ? 'bg-[#1a1a1a] border-neutral-800 text-gray-600 cursor-not-allowed'
+                  ? 'bg-[#1a1a1a] border-[var(--yt-border)] text-[var(--yt-text-2)] cursor-not-allowed'
                   : 'bg-white hover:bg-gray-200 text-black shadow-md shadow-white/5'
               }`}
               title={isOffline ? "غير متوفر التحميل في وضع عدم الاتصال" : "تحميل بدون إنترنت"}
@@ -494,32 +514,6 @@ export default function VideoPlayer({
               <span>تنزيل</span>
             </button>
           )}
-        </div>
-
-        {/* Slick Navigation Shortcuts for smooth jump scroll */}
-        <div className="bg-[#141414] border border-neutral-800/80 rounded-xl p-3 flex flex-row items-center justify-between gap-2 shadow-md" id="video-easy-navigation-panel">
-          <div className="flex items-center gap-2 text-right">
-            <Sparkles className="w-3.5 h-3.5 text-red-500 animate-pulse" />
-            <span className="text-[10px] text-gray-300 font-bold">شريط الوصول السريع للتسهيل</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setShowCommentsDrawer(true)}
-              type="button"
-              className="px-2.5 py-1 bg-[#1c1c1c] border border-neutral-800 hover:bg-neutral-800 text-[10px] font-bold text-gray-200 rounded-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1 select-none"
-            >
-              💬 افتح التعليقات
-            </button>
-            <button
-              onClick={() => {
-                document.getElementById('related-videos-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              type="button"
-              className="px-2.5 py-1 bg-[#1c1c1c] border border-neutral-800 hover:bg-neutral-800 text-[10px] font-bold text-gray-200 rounded-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1 select-none"
-            >
-              🍿 المقترحات
-            </button>
-          </div>
         </div>
 
         {/* Share Modal */}
@@ -533,20 +527,20 @@ export default function VideoPlayer({
       {/* CLICK-DEPENDENT SPECIAL COMMENTS TRIGGER SECTION (Identical to Mobile Youtube App) */}
         <div 
           onClick={() => setShowCommentsDrawer(true)}
-          className="bg-[#212121] hover:bg-[#2c2c2c] rounded-2xl p-4 cursor-pointer border border-[#2d2d2d]/30 transition-all text-right space-y-3.5 shadow-xl hover:shadow-2xl select-none"
+          className="bg-[var(--yt-chip)] hover:bg-[var(--yt-chip-hover)] rounded-2xl p-4 cursor-pointer border border-[var(--yt-border)] transition-all text-right space-y-3.5 shadow-xl hover:shadow-2xl select-none"
           id="comments-trigger-card"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-white">التعليقات</span>
-              <span className="text-[11px] text-gray-400 font-mono font-bold bg-[#2d2d2d] px-2.5 py-0.5 rounded-full">{comments.length}</span>
+              <span className="text-sm font-bold text-[var(--yt-text)]">التعليقات</span>
+              <span className="text-[11px] text-[var(--yt-text-2)] font-mono font-bold bg-[var(--yt-chip-hover)] px-2.5 py-0.5 rounded-full">{comments.length}</span>
             </div>
-            <ChevronLeft className="w-4 h-4 text-gray-400" />
+            <ChevronLeft className="w-4 h-4 text-[var(--yt-text-2)]" />
           </div>
 
           {comments.length > 0 ? (
-            <div className="flex items-center gap-3 bg-[#161616]/70 p-3 rounded-xl border border-[#262626]">
-              <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-neutral-800">
+            <div className="flex items-center gap-3 bg-[var(--yt-bg-elev)]/70 p-3 rounded-xl border border-[#262626]">
+              <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-[var(--yt-border)]">
                 <img 
                   src={comments[0].authorAvatar || undefined || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60'} 
                   className="w-full h-full object-cover" 
@@ -555,12 +549,12 @@ export default function VideoPlayer({
                   onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60'; }}
                 />
               </div>
-              <p className="text-xs text-gray-300 truncate flex-1 text-right font-medium">
+              <p className="text-xs text-[var(--yt-text)] truncate flex-1 text-right font-medium">
                 {comments[0].text}
               </p>
             </div>
           ) : (
-            <div className="text-xs text-gray-500 font-bold py-1">
+            <div className="text-xs text-[var(--yt-text-2)] font-bold py-1">
               لا توجد تعليقات بعد. اضغط لعرض التعليقات وكتابة أول تعليق! ✨
             </div>
           )}
@@ -578,19 +572,19 @@ export default function VideoPlayer({
 
             {/* Panel Container */}
             <div 
-              className="relative bg-[#161616] w-full md:max-w-xl h-[85vh] md:h-[75vh] rounded-t-3xl md:rounded-2xl border-t md:border border-neutral-800 flex flex-col overflow-hidden shadow-2xl z-10 animate-slide-up"
+              className="relative bg-[var(--yt-bg-elev)] w-full md:max-w-xl h-[85vh] md:h-[75vh] rounded-t-3xl md:rounded-2xl border-t md:border border-[var(--yt-border)] flex flex-col overflow-hidden shadow-2xl z-10 animate-slide-up"
               id="comments-slider-drawer-body"
             >
               {/* Header Title Bar */}
-              <div className="flex items-center justify-between p-4.5 border-b border-neutral-800 shrink-0 bg-[#1d1d1d]">
+              <div className="flex items-center justify-between p-4.5 border-b border-[var(--yt-border)] shrink-0 bg-[#1d1d1d]">
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-black text-white">التعليقات</span>
-                  <span className="text-xs text-gray-400 font-mono font-bold bg-[#2d2d2d] px-2.5 py-0.5 rounded-full">{comments.length}</span>
+                  <span className="text-base font-bold text-[var(--yt-text)]">التعليقات</span>
+                  <span className="text-xs text-[var(--yt-text-2)] font-mono font-bold bg-[var(--yt-chip-hover)] px-2.5 py-0.5 rounded-full">{comments.length}</span>
                 </div>
                 
                 <button 
                   onClick={() => setShowCommentsDrawer(false)}
-                  className="p-1.5 hover:bg-neutral-800 rounded-full transition-colors text-gray-400 hover:text-white cursor-pointer"
+                  className="p-1.5 hover:bg-[var(--yt-chip-hover)] rounded-full transition-colors text-[var(--yt-text-2)] cursor-pointer"
                   title="إغلاق التعليقات"
                 >
                   <X className="w-5 h-5" />
@@ -600,8 +594,8 @@ export default function VideoPlayer({
               {/* Scrollable list inside panel */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
                 {/* Submit comment inside drawer is highly accessible */}
-                <form onSubmit={handlePostComment} className="flex gap-2.5 bg-[#1c1c1c] p-3 rounded-xl border border-neutral-800 mb-2">
-                  <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[#272727] bg-[#3a3a3a]">
+                <form onSubmit={handlePostComment} className="flex gap-2.5 bg-[var(--yt-chip)] p-3 rounded-xl border border-[var(--yt-border)] mb-2">
+                  <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[var(--yt-border)] bg-[var(--yt-chip-hover)]">
                     <img 
                       src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=60" 
                       alt="حسابي" 
@@ -615,7 +609,7 @@ export default function VideoPlayer({
                       placeholder="إضافة تعليق علني..."
                       value={newCommentVal || ''}
                       onChange={e => setNewCommentVal(e.target.value)}
-                      className="flex-1 bg-transparent border-b border-neutral-800 focus:border-red-600 focus:outline-none text-xs py-1 placeholder-gray-500 text-white font-medium"
+                      className="flex-1 bg-transparent border-b border-[var(--yt-border)] focus:border-red-600 focus:outline-none text-xs py-1 text-[var(--yt-text)] font-medium"
                       id="comment-input-drawer"
                     />
                     <button 
@@ -624,7 +618,7 @@ export default function VideoPlayer({
                       className={`p-2 rounded-full transition-all shrink-0 ${
                         newCommentVal.trim() 
                           ? 'bg-red-600 text-white active:scale-95 cursor-pointer' 
-                          : 'text-gray-500 bg-neutral-900 cursor-not-allowed'
+                          : 'text-[var(--yt-text-2)] bg-neutral-900 cursor-not-allowed'
                       }`}
                     >
                       <Send className="w-3.5 h-3.5" />
@@ -636,8 +630,8 @@ export default function VideoPlayer({
                 {comments.length > 0 ? (
                   <div className="space-y-4 pt-1">
                     {comments.map((comment) => (
-                      <div key={comment.id} className="flex gap-3 text-sm select-text border-b border-neutral-900/60 pb-3" id={`drawer-comment-card-${comment.id}`}>
-                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-neutral-800">
+                      <div key={comment.id} className="flex gap-3 text-sm select-text border-b border-[var(--yt-border)]/60 pb-3" id={`drawer-comment-card-${comment.id}`}>
+                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[var(--yt-border)]">
                           <img 
                             src={comment.authorAvatar || undefined || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60'} 
                             alt={comment.authorName} 
@@ -649,19 +643,19 @@ export default function VideoPlayer({
 
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-white text-xs">{comment.authorName}</span>
-                            <span className="text-[10px] text-gray-500">{formatCommentTime(comment.timestamp)}</span>
+                            <span className="font-bold text-[var(--yt-text)] text-xs">{comment.authorName}</span>
+                            <span className="text-[10px] text-[var(--yt-text-2)]">{formatCommentTime(comment.timestamp)}</span>
                           </div>
                           
-                          <p className="text-gray-300 leading-relaxed text-xs text-right font-normal">{comment.text}</p>
+                          <p className="text-[var(--yt-text)] leading-relaxed text-xs text-right font-normal">{comment.text}</p>
                           
-                          <div className="flex items-center gap-3 pt-1 text-[10px] text-gray-500 font-medium">
-                            <button className="flex items-center gap-1 hover:text-white transition-colors">
+                          <div className="flex items-center gap-3 pt-1 text-[10px] text-[var(--yt-text-2)] font-medium">
+                            <button className="flex items-center gap-1 transition-colors">
                               <ThumbsUp className="w-3 h-3" />
                               <span className="font-mono">{comment.likes}</span>
                             </button>
                             <span className="text-gray-800">•</span>
-                            <button className="hover:text-white transition-colors">رد</button>
+                            <button className="transition-colors">رد</button>
                           </div>
 
                           {/* Replies within the drawer */}
@@ -669,15 +663,15 @@ export default function VideoPlayer({
                             <div className="mt-2 pr-3 border-r border-red-500/20 space-y-2">
                               {comment.replies.map((reply) => (
                                 <div key={reply.id} className="flex gap-2 text-[11px]" id={`drawer-reply-${reply.id}`}>
-                                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-neutral-800">
+                                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-[var(--yt-border)]">
                                     <img src={reply.authorAvatar || undefined} alt={reply.authorName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-1.5 mb-0.5">
-                                      <span className="font-bold text-white text-[10px]">{reply.authorName}</span>
-                                      <span className="text-[9px] text-gray-500">{formatCommentTime(reply.timestamp)}</span>
+                                      <span className="font-bold text-[var(--yt-text)] text-[10px]">{reply.authorName}</span>
+                                      <span className="text-[9px] text-[var(--yt-text-2)]">{formatCommentTime(reply.timestamp)}</span>
                                     </div>
-                                    <p className="text-gray-300 leading-normal text-[11px] font-normal">{reply.text}</p>
+                                    <p className="text-[var(--yt-text)] leading-normal text-[11px] font-normal">{reply.text}</p>
                                   </div>
                                 </div>
                               ))}
@@ -688,16 +682,16 @@ export default function VideoPlayer({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 space-y-2 text-gray-500 font-bold">
+                  <div className="text-center py-10 space-y-2 text-[var(--yt-text-2)] font-bold">
                     <span className="text-3xl block">💬</span>
                     <span className="text-xs">لا يوجد أي تعليق حالياً</span>
-                    <p className="text-[10px] text-gray-500">كن أول المقترحين بترك تعليق يدعم المبدع!</p>
+                    <p className="text-[10px] text-[var(--yt-text-2)]">كن أول المقترحين بترك تعليق يدعم المبدع!</p>
                   </div>
                 )}
               </div>
 
               {/* Secure synchronization warning signature */}
-              <div className="p-3 bg-[#111111] border-t border-neutral-800 shrink-0 text-center text-[10px] text-gray-400">
+              <div className="p-3 bg-[#111111] border-t border-[var(--yt-border)] shrink-0 text-center text-[10px] text-[var(--yt-text-2)]">
                 ✨ يتم مزامنة جميع التعليقات حياً بقاعدة علمية
               </div>
             </div>
@@ -715,7 +709,7 @@ export default function VideoPlayer({
               <div 
                 key={rev.id}
                 onClick={() => onRelatedSelect(rev)}
-                className="flex gap-3 bg-[#121212] hover:bg-[#1c1c1c] p-2 rounded-xl border border-[#1e1e1e] cursor-pointer group transition-all"
+                className="flex gap-3 bg-[#121212] hover:bg-[var(--yt-chip)] p-2 rounded-xl border border-[#1e1e1e] cursor-pointer group transition-all"
                 id={`related-video-${rev.id}`}
               >
                 {/* Thumb */}
@@ -732,11 +726,11 @@ export default function VideoPlayer({
                 </div>
 
                 <div className="flex-1 space-y-1">
-                  <h4 className="text-xs font-bold leading-normal text-white group-hover:text-red-400 transition-colors line-clamp-2">
+                  <h4 className="text-sm font-medium leading-normal text-[var(--yt-text)] transition-colors line-clamp-2">
                     {rev.title}
                   </h4>
-                  <p className="text-[11px] text-gray-400 truncate">{rev.channelName}</p>
-                  <div className="text-[10px] text-gray-500 flex items-center gap-1 font-mono">
+                  <p className="text-[11px] text-[var(--yt-text-2)] truncate">{rev.channelName}</p>
+                  <div className="text-[10px] text-[var(--yt-text-2)] flex items-center gap-1 font-mono">
                     <span>{rev.views}</span>
                   </div>
                 </div>
@@ -748,20 +742,20 @@ export default function VideoPlayer({
       
       {/* 📥 Beautiful Floating Download Status Emotional Card Tracker */}
       {isDownloading && (
-        <div className="fixed bottom-6 left-6 z-50 bg-[#161616]/95 border-2 border-green-500/30 rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 max-w-sm animate-bounce shadow-green-500/10 text-right backdrop-blur-md" dir="rtl">
+        <div className="fixed bottom-6 left-6 z-50 bg-[var(--yt-bg-elev)]/95 border-2 border-green-500/30 rounded-2xl p-4 shadow-2xl flex items-center gap-3.5 max-w-sm animate-bounce shadow-green-500/10 text-right backdrop-blur-md" dir="rtl">
           <div className="w-11 h-11 rounded-full bg-green-500/10 flex items-center justify-center text-green-400 relative shrink-0">
             <span className="text-xl animate-bounce">📥</span>
             <span className="absolute inset-0 rounded-full border border-green-500 animate-ping opacity-50"></span>
           </div>
           <div className="flex-1 min-w-[160px]">
-            <span className="text-xs font-black text-white block">جاري تحميل هذا الفيديو الآن...</span>
-            <span className="text-[10px] text-gray-400 block truncate mt-0.5">{video.title}</span>
+            <span className="text-xs font-bold text-[var(--yt-text)] block">جاري تحميل هذا الفيديو الآن...</span>
+            <span className="text-[10px] text-[var(--yt-text-2)] block truncate mt-0.5">{video.title}</span>
             <div className="w-full bg-neutral-800 h-1.5 rounded-full mt-2 overflow-hidden border border-neutral-700">
               <div className="bg-gradient-to-r from-green-500 to-emerald-400 h-full transition-all duration-300" style={{ width: `${downloadProgress}%` }}></div>
             </div>
             <div className="flex justify-between items-center mt-1 text-[10px] font-bold">
               <span className="text-green-400 font-mono">{downloadProgress}%</span>
-              <span className="text-gray-500">حفظ بدون إنترنت 📼</span>
+              <span className="text-[var(--yt-text-2)]">حفظ بدون إنترنت 📼</span>
             </div>
           </div>
         </div>
