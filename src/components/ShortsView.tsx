@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, MessageSquare, Share2, Download, Check, Volume2, VolumeX, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { Video, DownloadedItem } from '../types';
-import { toggleLikeVideo, getSimpleAuthUser } from '../services/db';
+import { toggleLikeVideo, getSimpleAuthUser, addComment } from '../services/db';
 import { auth } from '../lib/firebase';
 
 interface ShortsViewProps {
@@ -212,20 +212,30 @@ export default function ShortsView({
             <span className="text-xs text-gray-400 mt-1">ديسلايك</span>
           </div>
 
-          {/* Comment mockup link */}
+          {/* Comment */}
           <div className="flex flex-col items-center">
             <button
-              onClick={() => {
-                const comment = prompt('اكتب تعليقك السريع على الشورتس:');
-                if (comment) {
-                  alert('تم نشر تعليقك بنجاح! شكراً لمكافأتنا بصوتك 🙌');
+              onClick={async () => {
+                const user = currentUser || (auth.currentUser ? { user_id: auth.currentUser.uid } : null) || getSimpleAuthUser();
+                if (!user) {
+                  alert('⚠️ يرجى تسجيل الدخول أولاً للتعليق!');
+                  return;
+                }
+                const comment = prompt('اكتب تعليقك على هذا المقطع:');
+                if (comment && comment.trim()) {
+                  try {
+                    await addComment(activeShort?.id, (user as any).user_id || (user as any).uid, comment.trim());
+                    alert('تم نشر تعليقك بنجاح! شكراً لمشاركتك 🙌');
+                  } catch {
+                    alert('❌ فشل نشر التعليق. حاول مرة أخرى.');
+                  }
                 }
               }}
               className="p-3.5 rounded-full bg-[#1c1c1c] border border-[#272727] hover:bg-[#272727] text-gray-200 shadow-lg active:scale-90 transition-all"
             >
               <MessageSquare className="w-5 h-5" />
             </button>
-            <span className="text-xs text-gray-400 mt-1 font-mono font-bold">٢٣٤</span>
+            <span className="text-xs text-gray-400 mt-1 font-mono font-bold">تعليق</span>
           </div>
 
           {/* Download feature for Shorts inside viewer */}

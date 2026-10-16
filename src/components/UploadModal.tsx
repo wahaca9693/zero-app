@@ -42,7 +42,7 @@ function formatVideoDuration(dur: number): string {
   return formatted;
 }
 
-export default function UploadModal({ onClose, onSave }: UploadModalProps) {
+export default function UploadModal({ onClose, onSave, currentUser }: UploadModalProps) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [category, setCategory] = useState('تقنية');
@@ -481,7 +481,7 @@ export default function UploadModal({ onClose, onSave }: UploadModalProps) {
                     type="button"
                     disabled={fetchingYt}
                     onClick={handleFetchYoutube}
-                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shrink-0 disabled:bg-neutral-850"
+                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shrink-0 disabled:bg-neutral-800"
                   >
                     {fetchingYt ? 'جاري السحب...' : 'تحميل واستدعاء تلقائي ⚡'}
                   </button>

@@ -68,7 +68,7 @@ export default function ShareModal({ videoUrl, onClose }: ShareModalProps) {
 
         <button
           onClick={onClose}
-          className="w-full mt-6 py-2.5 bg-neutral-800 hover:bg-neutral-750 text-white rounded-xl text-xs font-bold transition-colors"
+          className="w-full mt-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-bold transition-colors"
         >
           إغلاق
         </button>

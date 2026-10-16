@@ -89,7 +89,7 @@ export default function AccountView({
 
     try {
       if (isRegister) {
-        const user = await simpleTursoRegister(email, username);
+        const user = await simpleTursoRegister(email, username, password);
         setSuccessMsg('🎉 تم إنشاء حسابك بنجاح! جاري تحويلك...');
         setTimeout(async () => {
           onLoginSuccess({ user_id: user.uid, username: user.username, email: user.email }, '');
@@ -143,7 +143,7 @@ export default function AccountView({
 
   if (currentUser) {
     // Logged in user channel view
-    const myVideos = uploadedVideos.filter(v => v.channelName === currentUser.username);
+    const myVideos = uploadedVideos.filter(v => v.userId === currentUser.user_id || v.channelName === currentUser.username);
 
     return (
       <div className="space-y-6 animate-fade-in max-w-5xl mx-auto" id="user-profile-view">
@@ -538,7 +538,7 @@ export default function AccountView({
                 <span className="text-gray-400">تاريخ الانضمام:</span>
                 <span className="text-gray-300 text-xs flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-neutral-500" />
-                  <span>٢٠٢٦/٠٥/٢٥</span>
+                  <span>{currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString('ar-EG') : '—'}</span>
                 </span>
               </div>
             </div>
@@ -778,6 +778,7 @@ export default function AccountView({
               key="auth-password-input-element"
               type="password"
               required
+              minLength={6}
               value={password || ''}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••••"

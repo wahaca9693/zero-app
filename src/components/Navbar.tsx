@@ -6,7 +6,7 @@ interface NavbarProps {
   onToggleSidebar: () => void;
   onOpenUpload: () => void;
   onGoHome: () => void;
-  currentUser: { user_id: number; username: string; email: string } | null;
+  currentUser: { user_id: string; username: string; email: string } | null;
   onGoToAccount: () => void;
 }
 

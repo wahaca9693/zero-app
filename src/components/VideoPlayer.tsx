@@ -15,6 +15,17 @@ function getYouTubeId(url: string): string | null {
   return (match && match[2].length === 11) ? match[2] : null;
 }
 
+// Format a comment timestamp (server sends epoch ms) into a readable date
+function formatCommentTime(ts: unknown): string {
+  try {
+    const d = new Date(typeof ts === 'number' ? ts : String(ts));
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('ar-EG');
+  } catch {
+    return '';
+  }
+}
+
 interface VideoPlayerProps {
   video: Video;
   downloadStatus: DownloadedItem | undefined;
@@ -52,13 +63,15 @@ export default function VideoPlayer({
   isSaved,
   currentUser
 }: VideoPlayerProps) {
+  // Likes come back from the server as a plain count (older cached data may be an array)
+  const toNum = (v: unknown): number => (typeof v === 'number' && !isNaN(v) ? v : 0);
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
   const [showCommentsDrawer, setShowCommentsDrawer] = useState(false);
-  const [likesCount, setLikesCount] = useState(video.likes);
+  const [likesCount, setLikesCount] = useState<number>(toNum(video.likes));
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscribersText, setSubscribersText] = useState(video.subscribers);
-  const [viewsText, setViewsText] = useState(video.views);
+  const [viewsText, setViewsText] = useState<string>(video.views || '0');
   const [showDesc, setShowDesc] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   
@@ -89,9 +102,9 @@ export default function VideoPlayer({
 
     // Set like/view/subscriber states from incoming video parameters
     setLiked(!!video.liked);
-    setLikesCount(video.likes);
+    setLikesCount(toNum(video.likes));
     setSubscribersText(video.subscribers);
-    setViewsText(video.views);
+    setViewsText(video.views || '0');
 
     // 2. Increment view count dynamically on backend
     const recordView = async () => {
@@ -196,8 +209,18 @@ export default function VideoPlayer({
 
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Resolve the current user from any auth mode (prop / Firebase / simple Turso)
+  // into a uniform { user_id } shape
+  const resolvedUser: { user_id: string } | null = (() => {
+    if (currentUser?.user_id) return { user_id: currentUser.user_id };
+    if (auth.currentUser) return { user_id: auth.currentUser.uid };
+    const s = getSimpleAuthUser();
+    return s?.uid ? { user_id: s.uid } : null;
+  })();
+  const canDelete = !!resolvedUser && video.userId === resolvedUser.user_id;
+
   const handleDeleteVideo = async () => {
-    const user = currentUser || (auth.currentUser ? { user_id: auth.currentUser.uid } : null) || getSimpleAuthUser();
+    const user = resolvedUser;
     if (!user) {
       alert('⚠️ يرجى تسجيل الدخول لحذف الفيديو');
       return;
@@ -428,7 +451,7 @@ export default function VideoPlayer({
             <span>{isSaved ? 'محفوظ' : 'حفظ'}</span>
           </button>
 
-          {auth.currentUser && (video as any).userId === auth.currentUser.uid && (
+          {canDelete && (
             <button
               onClick={handleDeleteVideo}
               disabled={isDeleting}
@@ -443,7 +466,7 @@ export default function VideoPlayer({
           {isDownloaded ? (
             <button
               onClick={onDeleteDownload}
-              className="flex items-center gap-1.5 px-3.5 h-9 text-xs font-bold rounded-full bg-green-650 hover:bg-red-650 text-white transition-all active:scale-95 group shadow-md shadow-green-600/10 cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 px-3.5 h-9 text-xs font-bold rounded-full bg-green-600 hover:bg-red-600 text-white transition-all active:scale-95 group shadow-md shadow-green-600/10 cursor-pointer shrink-0"
               title="اضغط لحذف التحميل من الذاكرة المحلية"
             >
               <Check className="w-3.5 h-3.5 text-white group-hover:hidden animate-pulse" />
@@ -627,7 +650,7 @@ export default function VideoPlayer({
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-white text-xs">{comment.authorName}</span>
-                            <span className="text-[10px] text-gray-500">{comment.timestamp}</span>
+                            <span className="text-[10px] text-gray-500">{formatCommentTime(comment.timestamp)}</span>
                           </div>
                           
                           <p className="text-gray-300 leading-relaxed text-xs text-right font-normal">{comment.text}</p>
@@ -652,7 +675,7 @@ export default function VideoPlayer({
                                   <div className="flex-1">
                                     <div className="flex items-center gap-1.5 mb-0.5">
                                       <span className="font-bold text-white text-[10px]">{reply.authorName}</span>
-                                      <span className="text-[9px] text-gray-500">{reply.timestamp}</span>
+                                      <span className="text-[9px] text-gray-500">{formatCommentTime(reply.timestamp)}</span>
                                     </div>
                                     <p className="text-gray-300 leading-normal text-[11px] font-normal">{reply.text}</p>
                                   </div>
@@ -668,7 +691,7 @@ export default function VideoPlayer({
                   <div className="text-center py-10 space-y-2 text-gray-500 font-bold">
                     <span className="text-3xl block">💬</span>
                     <span className="text-xs">لا يوجد أي تعليق حالياً</span>
-                    <p className="text-[10px] text-gray-650">كن أول المقترحين بترك تعليق يدعم المبدع!</p>
+                    <p className="text-[10px] text-gray-500">كن أول المقترحين بترك تعليق يدعم المبدع!</p>
                   </div>
                 )}
               </div>
@@ -688,7 +711,6 @@ export default function VideoPlayer({
         <h3 className="text-base font-bold pr-1">الفيديوهات المقترحة</h3>
         <div className="space-y-3.5">
           {relatedVideos.map((rev) => {
-            const revIsDownloaded = localStorage.getItem(`download_${rev.id}`) === 'completed';
             return (
               <div 
                 key={rev.id}
@@ -707,11 +729,6 @@ export default function VideoPlayer({
                   <span className="absolute bottom-1 left-1 bg-black/80 font-mono text-[10px] px-1 rounded text-white">
                     {rev.duration}
                   </span>
-                  {revIsDownloaded && (
-                    <span className="absolute top-1 right-1 bg-green-600 p-0.5 rounded-full text-white">
-                      <Check className="w-2.5 h-2.5" />
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex-1 space-y-1">
