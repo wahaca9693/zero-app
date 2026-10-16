@@ -22,10 +22,10 @@ export default function ShareModal({ videoUrl, onClose }: ShareModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in text-right" dir="rtl">
       <div className="absolute inset-0" onClick={onClose}></div>
-      <div className="relative bg-[#1a1a1a] border border-neutral-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-slide-up">
+      <div className="relative bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-slide-up">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-black text-white">مشاركة الفيديو</h3>
-          <button onClick={onClose} className="p-1 hover:bg-neutral-800 rounded-full text-gray-400">
+          <button onClick={onClose} className="p-1 hover:bg-[var(--yt-chip-hover)] rounded-full text-[var(--yt-text-2)]">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -42,19 +42,19 @@ export default function ShareModal({ videoUrl, onClose }: ShareModalProps) {
               <div className={`${link.color} p-3 rounded-full shadow-lg group-hover:scale-110 transition-transform`}>
                 {link.icon}
               </div>
-              <span className="text-[10px] text-gray-400 font-bold">{link.name}</span>
+              <span className="text-[10px] text-[var(--yt-text-2)] font-bold">{link.name}</span>
             </a>
           ))}
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-500 block">رابط الفيديو المباشر:</label>
-          <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-2 rounded-xl">
+          <label className="text-xs font-bold text-[var(--yt-text-2)] block">رابط الفيديو المباشر:</label>
+          <div className="flex items-center gap-2 bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] p-2 rounded-xl">
             <input
               type="text"
               readOnly
               value={videoUrl}
-              className="flex-1 bg-transparent border-none text-[10px] text-gray-300 focus:outline-none font-mono"
+              className="flex-1 bg-transparent border-none text-[10px] text-[var(--yt-text)] focus:outline-none font-mono"
             />
             <button
               onClick={copyToClipboard}
@@ -68,7 +68,7 @@ export default function ShareModal({ videoUrl, onClose }: ShareModalProps) {
 
         <button
           onClick={onClose}
-          className="w-full mt-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-bold transition-colors"
+          className="w-full mt-6 py-2.5 bg-[var(--yt-chip-hover)] hover:bg-[var(--yt-chip-hover)] text-white rounded-xl text-xs font-bold transition-colors"
         >
           إغلاق
         </button>

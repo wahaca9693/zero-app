@@ -1,5 +1,5 @@
-import React from 'react';
-import { Download, Check, Trash2, Loader2, Play } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Download, Check, Trash2, Loader2, MoreVertical } from 'lucide-react';
 import { Video, DownloadedItem } from '../types';
 
 interface VideoCardProps {
@@ -12,6 +12,9 @@ interface VideoCardProps {
   isOffline: boolean;
   onChannelClick?: (channelName: string) => void;
 }
+
+const FALLBACK_THUMB = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=60';
+const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60';
 
 export default function VideoCard({
   video,
@@ -26,147 +29,146 @@ export default function VideoCard({
   const isDownloading = downloadStatus?.status === 'downloading';
   const downloadProgress = downloadStatus?.progress || 0;
 
-  // Render correct badge for downloading
-  const renderDownloadButton = () => {
+  const renderBadge = () => {
     if (isDownloaded) {
       return (
-        <button
+        <motion.button
+          whileTap={{ scale: 0.9 }}
           onClick={onDeleteDownload}
-          className="p-1 px-2.5 rounded-full text-xs font-semibold bg-green-500/15 border border-green-500/30 text-green-400 flex items-center gap-1 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all duration-200"
-          title="محمل بالفعل. انقر للحذف."
+          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--yt-chip)] text-[var(--yt-text)] hover:bg-[var(--yt-chip-hover)] transition-colors"
+          title="محمّل — اضغط للحذف"
         >
-          <Check className="w-3.5 h-3.5 text-green-400" />
-          <span>محمل</span>
-          <Trash2 className="w-3 h-3 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
+          <Check className="w-3 h-3" />
+          <span>تم التنزيل</span>
+        </motion.button>
       );
     }
-
     if (isDownloading) {
       return (
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#272727] text-xs font-semibold text-blue-400 border border-blue-500/20">
-          <Loader2 className="w-3 h-3 animate-spin" />
-          <span>{downloadProgress}%</span>
-        </div>
+        <span className="flex items-center gap-1.5 text-[11px] text-[var(--yt-blue)] font-medium">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <span className="font-mono">{downloadProgress}%</span>
+        </span>
       );
     }
-
-    // Standard download button if we're online and not downloaded yet
     if (!isOffline) {
       return (
-        <button
+        <motion.button
+          whileTap={{ scale: 0.85 }}
           onClick={onDownload}
-          className="p-1.5 rounded-full bg-[#1b1b1b] border border-[#2d2d2d] hover:bg-[#2e2e2e] hover:border-red-500 text-gray-300 hover:text-red-500 active:scale-90 transition-all duration-200"
-          title="تحميل لمشاهدته بلا إنترنت"
+          className="yt-icon-btn p-1.5 text-[var(--yt-text-2)] hover:text-[var(--yt-text)]"
+          title="تنزيل للمشاهدة بلا إنترنت"
         >
-          <Download className="w-3.5 h-3.5" />
-        </button>
+          <Download className="w-4 h-4" />
+        </motion.button>
       );
     }
-
     return null;
   };
 
   return (
-    <div 
-      className="group flex flex-col bg-transparent overflow-hidden transition-all duration-200 cursor-pointer text-right"
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.2, 0, 0, 1] }}
+      className="group flex flex-col cursor-pointer"
       onClick={onSelect}
       id={`video-card-${video.id}`}
     >
-      {/* 1. Thumbnail Container */}
-      <div className="relative aspect-video w-full overflow-hidden bg-neutral-900 rounded-xl">
+      {/* Thumbnail */}
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-[var(--yt-skeleton)]">
         <img
           src={video.thumbnail || undefined}
           alt={video.title}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
           loading="lazy"
           referrerPolicy="no-referrer"
-          onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=60'; }}
+          onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_THUMB; }}
+          className="yt-card-thumb w-full h-full object-cover"
         />
-        
-        {/* Play Icon Hover Overlay */}
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200">
-          <div className="p-3 rounded-full bg-black/60 text-white">
-            <Play className="w-5 h-5 fill-white text-white" />
-          </div>
-        </div>
-        
-        {/* Video Duration */}
-        <span className="absolute bottom-2 left-2 bg-black/80 text-[11px] font-bold tracking-tight px-1.5 py-0.5 rounded text-white font-mono">
-          {video.duration}
-        </span>
-        
-        {/* Category Badge on top right */}
-        <span className="absolute top-2 right-2 bg-black/60 text-[10px] font-bold px-2 py-0.5 rounded text-gray-300">
-          {video.category}
-        </span>
-        
-        {/* Offline indicator on top left if already downloaded */}
-        {isDownloaded && (
-          <span className="absolute top-2 left-2 bg-green-600/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-            <Check className="w-3 h-3" />
-            <span>محمل</span>
+        {video.duration && video.duration !== '00:00' && (
+          <span className="absolute bottom-1.5 left-1.5 bg-black/80 text-white text-xs font-medium px-1.5 py-0.5 rounded">
+            {video.duration}
           </span>
+        )}
+        {isDownloaded && (
+          <span className="absolute top-1.5 right-1.5 bg-black/70 text-white text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1">
+            <Check className="w-3 h-3" />
+            بلا إنترنت
+          </span>
+        )}
+        {isDownloading && (
+          <div className="absolute bottom-0 right-0 left-0 h-1 bg-black/40">
+            <motion.div
+              className="h-full bg-[var(--yt-red)]"
+              animate={{ width: `${downloadProgress}%` }}
+              transition={{ ease: 'linear', duration: 0.3 }}
+            />
+          </div>
         )}
       </div>
 
-      {/* 2. Details Section */}
-      <div className="mt-3 flex gap-3">
-        {/* Channel Avatar */}
-        <div 
-          className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-neutral-800 cursor-pointer hover:ring-2 hover:ring-red-500/50 transition-all active:scale-95 duration-150"
+      {/* Meta */}
+      <div className="flex gap-3 pt-3">
+        <div
+          className="w-9 h-9 rounded-full overflow-hidden shrink-0 bg-[var(--yt-chip)] cursor-pointer"
           onClick={(e) => {
-            if (onChannelClick) {
-              e.stopPropagation();
-              onChannelClick(video.channelName);
-            }
+            e.stopPropagation();
+            onChannelClick?.(video.channelName);
           }}
-          title={`عرض قناة ${video.channelName}`}
+          title={video.channelName}
         >
-          <img 
-            src={video.channelAvatar || undefined} 
-            alt={video.channelName} 
-            className="w-full h-full object-cover"
+          <img
+            src={video.channelAvatar || undefined}
+            alt={video.channelName}
+            loading="lazy"
             referrerPolicy="no-referrer"
-            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60'; }}
+            onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_AVATAR; }}
+            className="w-full h-full object-cover"
           />
         </div>
 
-        <div className="flex-1 min-w-0 space-y-1">
-          {/* Title */}
-          <h3 className="text-sm font-bold leading-snug text-white line-clamp-2 pr-0.5 group-hover:text-gray-300 transition-colors">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-medium leading-[1.4] text-[var(--yt-text)] line-clamp-2">
             {video.title}
           </h3>
-
-          {/* Channel Name */}
-          <div className="text-xs text-gray-400 font-medium hover:text-white transition-colors flex items-center justify-between">
-            <span 
+          <div className="mt-1 text-xs text-[var(--yt-text-2)] leading-relaxed">
+            <span
+              className="hover:text-[var(--yt-text)] transition-colors cursor-pointer"
               onClick={(e) => {
-                if (onChannelClick) {
-                  e.stopPropagation();
-                  onChannelClick(video.channelName);
-                }
+                e.stopPropagation();
+                onChannelClick?.(video.channelName);
               }}
-              className="cursor-pointer hover:underline hover:text-white transition-colors"
-              title={`عرض قناة ${video.channelName}`}
             >
               {video.channelName}
             </span>
-            
-            {/* Download/Delete trigger button directly inside the meta row */}
-            <div onClick={e => e.stopPropagation()} className="ml-1 z-10 shrink-0">
-              {renderDownloadButton()}
+            <div className="flex items-center gap-1">
+              <span>{video.views || '0'} مشاهدة</span>
+              <span>•</span>
+              <span>{video.uploadDate}</span>
             </div>
           </div>
+        </div>
 
-          {/* View Count & Upload Date */}
-          <div className="text-xs text-gray-500 flex items-center gap-1.5">
-            <span>{video.views}</span>
-            <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
-            <span>{video.uploadDate}</span>
-          </div>
+        <div className="flex flex-col items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="yt-icon-btn p-1.5 text-[var(--yt-text)] opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="خيارات"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+          {renderBadge()}
         </div>
       </div>
-    </div>
+      {isDownloaded && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDeleteDownload(e); }}
+          className="mt-1 self-start flex items-center gap-1 text-[11px] text-[var(--yt-text-2)] hover:text-[var(--yt-red)] transition-colors"
+        >
+          <Trash2 className="w-3 h-3" />
+          حذف التنزيل
+        </button>
+      )}
+    </motion.article>
   );
 }

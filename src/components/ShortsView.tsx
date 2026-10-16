@@ -48,7 +48,7 @@ export default function ShortsView({
       <div className="flex flex-col items-center justify-center p-12 text-center" id="no-shorts-fallback">
         <Sparkles className="w-12 h-12 text-red-500 animate-bounce mb-3" />
         <h3 className="text-lg font-bold">لا توجد مقاطع قصيرة</h3>
-        <p className="text-gray-400 text-sm">تفقد الأقسام الأخرى للتطبيق لحين توفر مقاطع جديدة.</p>
+        <p className="text-[var(--yt-text-2)] text-sm">تفقد الأقسام الأخرى للتطبيق لحين توفر مقاطع جديدة.</p>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function ShortsView({
         <button
           onClick={handlePrev}
           disabled={activeIndex === 0}
-          className={`p-3 rounded-full border border-[#272727] bg-[#121212]/85 hover:bg-[#272727] text-white active:scale-95 transition-all ${
+          className={`p-3 rounded-full border border-[var(--yt-border)] bg-[var(--yt-bg-elev)]/85 hover:bg-[var(--yt-chip)] text-[var(--yt-text)] active:scale-95 transition-all ${
             activeIndex === 0 ? 'opacity-40 cursor-not-allowed' : ''
           }`}
           title="المقطع السابق"
@@ -108,7 +108,7 @@ export default function ShortsView({
         <button
           onClick={handleNext}
           disabled={activeIndex === shorts.length - 1}
-          className={`p-3 rounded-full border border-[#272727] bg-[#121212]/85 hover:bg-[#272727] text-white active:scale-95 transition-all ${
+          className={`p-3 rounded-full border border-[var(--yt-border)] bg-[var(--yt-bg-elev)]/85 hover:bg-[var(--yt-chip)] text-[var(--yt-text)] active:scale-95 transition-all ${
             activeIndex === shorts.length - 1 ? 'opacity-40 cursor-not-allowed' : ''
           }`}
           title="المقطع التالي"
@@ -119,7 +119,7 @@ export default function ShortsView({
 
       <div className="flex items-stretch gap-4 md:gap-6 w-full max-w-[480px] h-full" id={`short-player-${activeShort?.id}`}>
         {/* Short Card Area */}
-        <div className="flex-1 relative rounded-3xl bg-black border border-[#272727] overflow-hidden group shadow-2xl">
+        <div className="flex-1 relative rounded-3xl bg-black border border-[var(--yt-border)] overflow-hidden group shadow-2xl">
           {/* Audio toggle overlay */}
           <button
             onClick={() => setIsMuted(!isMuted)}
@@ -147,7 +147,7 @@ export default function ShortsView({
           {/* Bottom detail text overlay */}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-6 pt-10 text-right text-white space-y-3 z-10">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-full overflow-hidden border border-[#272727] bg-[#3a3a3a]">
+              <div className="w-9 h-9 rounded-full overflow-hidden border border-[var(--yt-border)] bg-[var(--yt-chip-hover)]">
                 <img src={activeShort?.channelAvatar || undefined} alt={activeShort?.channelName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </div>
               <div>
@@ -160,11 +160,11 @@ export default function ShortsView({
               {activeShort?.title}
             </h3>
             
-            <p className="text-[11px] text-gray-400 line-clamp-1 opacity-80 select-text">
+            <p className="text-[11px] text-[var(--yt-text-2)] line-clamp-1 opacity-80 select-text">
               {activeShort?.description}
             </p>
 
-            <span className="inline-block bg-white/10 backdrop-blur-md text-[10px] text-white px-2.5 py-0.5 rounded-full font-bold">
+            <span className="inline-block bg-white/10 backdrop-blur-md text-[10px] text-[var(--yt-text)] px-2.5 py-0.5 rounded-full font-bold">
               ⚡ مقطع قصير (Short)
             </span>
           </div>
@@ -187,12 +187,12 @@ export default function ShortsView({
               className={`p-3.5 rounded-full shadow-lg border transition-all active:scale-90 ${
                 likedShorts[activeShort?.id] 
                   ? 'bg-red-600 border-red-500 text-white' 
-                  : 'bg-[#1c1c1c] border-[#272727] text-gray-200 hover:bg-[#272727]'
+                  : 'bg-[var(--yt-chip)] border-[var(--yt-border)] text-[var(--yt-text)] hover:bg-[var(--yt-chip)]'
               }`}
             >
               <ThumbsUp className="w-5 h-5 fill-current" />
             </button>
-            <span className="text-xs text-gray-400 mt-1 font-mono font-bold">
+            <span className="text-xs text-[var(--yt-text-2)] mt-1 font-mono font-bold">
               {likedShorts[activeShort?.id] ? 'تم الإعجاب' : 'أعجبني'}
             </span>
           </div>
@@ -204,12 +204,12 @@ export default function ShortsView({
               className={`p-3.5 rounded-full shadow-lg border transition-all active:scale-90 ${
                 dislikedShorts[activeShort?.id]
                   ? 'bg-rose-950 border-rose-800 text-rose-400'
-                  : 'bg-[#1c1c1c] border-[#272727] text-gray-200 hover:bg-[#272727]'
+                  : 'bg-[var(--yt-chip)] border-[var(--yt-border)] text-[var(--yt-text)] hover:bg-[var(--yt-chip)]'
               }`}
             >
               <ThumbsDown className="w-5 h-5" />
             </button>
-            <span className="text-xs text-gray-400 mt-1">ديسلايك</span>
+            <span className="text-xs text-[var(--yt-text-2)] mt-1">ديسلايك</span>
           </div>
 
           {/* Comment */}
@@ -231,11 +231,11 @@ export default function ShortsView({
                   }
                 }
               }}
-              className="p-3.5 rounded-full bg-[#1c1c1c] border border-[#272727] hover:bg-[#272727] text-gray-200 shadow-lg active:scale-90 transition-all"
+              className="p-3.5 rounded-full bg-[var(--yt-chip)] border border-[var(--yt-border)] hover:bg-[var(--yt-chip)] text-[var(--yt-text)] shadow-lg active:scale-90 transition-all"
             >
               <MessageSquare className="w-5 h-5" />
             </button>
-            <span className="text-xs text-gray-400 mt-1 font-mono font-bold">تعليق</span>
+            <span className="text-xs text-[var(--yt-text-2)] mt-1 font-mono font-bold">تعليق</span>
           </div>
 
           {/* Download feature for Shorts inside viewer */}
@@ -254,15 +254,15 @@ export default function ShortsView({
                 disabled={isOffline || downloadStatusList[activeShort?.id]?.status === 'downloading'}
                 className={`p-3.5 rounded-full shadow-lg border transition-all active:scale-90 ${
                   isOffline 
-                    ? 'bg-neutral-800 border-neutral-700 text-neutral-600 cursor-not-allowed'
-                    : 'bg-[#1c1c1c] border-red-500/20 text-red-500 hover:bg-neutral-800'
+                    ? 'bg-[var(--yt-chip-hover)] border-[var(--yt-border)] text-neutral-600 cursor-not-allowed'
+                    : 'bg-[var(--yt-chip)] border-red-500/20 text-red-500 hover:bg-[var(--yt-chip-hover)]'
                 }`}
                 title="تنزيل الشورتس أوفلاين"
               >
                 <Download className="w-5 h-5 animate-pulse" />
               </button>
             )}
-            <span className="text-xs text-gray-400 mt-1 font-bold">
+            <span className="text-xs text-[var(--yt-text-2)] mt-1 font-bold">
               {downloadStatusList[activeShort?.id]?.status === 'completed' ? 'تنزيل آمن' : 'تنزيل'}
             </span>
           </div>
@@ -274,11 +274,11 @@ export default function ShortsView({
                 navigator.clipboard.writeText(activeShort?.src);
                 alert('تم نسخ رابط الشورتس لمشاركته في ثوانٍ 🌟');
               }}
-              className="p-3.5 rounded-full bg-[#1c1c1c] border border-[#272727] hover:bg-[#272727] text-gray-200"
+              className="p-3.5 rounded-full bg-[var(--yt-chip)] border border-[var(--yt-border)] hover:bg-[var(--yt-chip)] text-[var(--yt-text)]"
             >
               <Share2 className="w-5 h-5" />
             </button>
-            <span className="text-xs text-gray-400 mt-1">مشاركة</span>
+            <span className="text-xs text-[var(--yt-text-2)] mt-1">مشاركة</span>
           </div>
         </div>
       </div>

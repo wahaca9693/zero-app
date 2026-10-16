@@ -39,4 +39,4 @@ export interface DownloadedItem {
   progress: number;
 }
 
-export type ActiveTab = 'home' | 'shorts' | 'subscriptions' | 'library' | 'liked' | 'downloads' | 'history' | 'account';
+export type ActiveTab = 'home' | 'shorts' | 'subscriptions' | 'library' | 'liked' | 'downloads' | 'history' | 'account' | 'settings';

@@ -188,14 +188,14 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in text-right text-white">
-      <div className="relative w-full max-w-lg bg-[#161616] border border-[#272727] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-lg bg-[var(--yt-bg-elev)] border border-[#272727] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         
         {/* Header bar */}
         <div className="flex items-center justify-between p-5 border-b border-[#272727]">
           <button 
             type="button"
             onClick={onClose}
-            className="p-1 px-3 text-xs bg-neutral-800 hover:bg-neutral-700 hover:text-red-500 rounded-lg select-none transition-colors"
+            className="p-1 px-3 text-xs bg-[var(--yt-chip-hover)] hover:bg-[var(--yt-chip-hover)] hover:text-red-500 rounded-lg select-none transition-colors"
           >
             إغلاق
           </button>
@@ -216,38 +216,38 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
 
           {/* Title input */}
           <div className="space-y-1.5">
-            <label className="text-xs text-gray-400 font-bold block">عنوان وموضوع الفيديو *</label>
+            <label className="text-xs text-[var(--yt-text-2)] font-bold block">عنوان وموضوع الفيديو *</label>
             <input
               type="text"
               required
               placeholder="مثال: مراجعة شاملة للسيارة الجديدة ومواصفاتها الفنية"
               value={title || ''}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[#1e1e1e] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white"
+              className="w-full bg-[var(--yt-bg-elev)] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white"
             />
           </div>
 
           {/* Description input */}
           <div className="space-y-1.5">
-            <label className="text-xs text-gray-400 font-bold block">الوصف بالتفصيل *</label>
+            <label className="text-xs text-[var(--yt-text-2)] font-bold block">الوصف بالتفصيل *</label>
             <textarea
               required
               placeholder="اكتب ماذا سيتحدّث عنه مقطع الفيديو الخاص بك بالتفصيل..."
               value={desc || ''}
               rows={3}
               onChange={(e) => setDesc(e.target.value)}
-              className="w-full bg-[#1e1e1e] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white resize-none"
+              className="w-full bg-[var(--yt-bg-elev)] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white resize-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {/* Category selection */}
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-400 font-bold block">التصنيف</label>
+              <label className="text-xs text-[var(--yt-text-2)] font-bold block">التصنيف</label>
               <select
                 value={category || ''}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-[#1e1e1e] border border-[#272727] focus:border-red-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none text-white appearance-none cursor-pointer"
+                className="w-full bg-[var(--yt-bg-elev)] border border-[#272727] focus:border-red-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none text-white appearance-none cursor-pointer"
               >
                 <option value="تقنية">تقنية 💻</option>
                 <option value="سفر">سفر ✈️</option>
@@ -259,25 +259,25 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
 
             {/* Duration */}
             <div className="space-y-1.5">
-              <label className="text-xs text-gray-400 font-bold block">المدة الزمنية (تحسب تلقائياً - مثال: 03:15)</label>
+              <label className="text-xs text-[var(--yt-text-2)] font-bold block">المدة الزمنية (تحسب تلقائياً - مثال: 03:15)</label>
               <input
                 type="text"
                 value={duration || ''}
                 onChange={(e) => setDuration(e.target.value)}
                 placeholder="00:00"
-                className="w-full bg-[#1e1e1e] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white"
+                className="w-full bg-[var(--yt-bg-elev)] border border-[#272727] focus:border-red-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none placeholder-gray-600 text-white"
                 dir="ltr"
               />
             </div>
           </div>
 
           {/* Toggle upload type */}
-          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#121212] rounded-xl border border-[#272727]" id="upload-type-tabs">
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[var(--yt-bg-elev)] rounded-xl border border-[#272727]" id="upload-type-tabs">
             <button
               type="button"
               onClick={() => setUploadType('file')}
               className={`py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${
-                uploadType === 'file' ? 'bg-red-600 text-white shadow' : 'text-gray-400 hover:text-white'
+                uploadType === 'file' ? 'bg-red-600 text-white shadow' : 'text-[var(--yt-text-2)] hover:text-white'
               }`}
             >
               📂 رفع ملف محلي
@@ -292,7 +292,7 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
                 }
               }}
               className={`py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${
-                uploadType === 'url' ? 'bg-red-600 text-white shadow' : 'text-gray-400 hover:text-white'
+                uploadType === 'url' ? 'bg-red-600 text-white shadow' : 'text-[var(--yt-text-2)] hover:text-white'
               }`}
             >
               🔗 روابط مباشرة
@@ -303,7 +303,7 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
                 setUploadType('youtube');
               }}
               className={`py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${
-                uploadType === 'youtube' ? 'bg-red-600 text-white shadow' : 'text-gray-400 hover:text-white'
+                uploadType === 'youtube' ? 'bg-red-600 text-white shadow' : 'text-[var(--yt-text-2)] hover:text-white'
               }`}
             >
               📺 استيراد يوتيوب
@@ -311,10 +311,10 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
           </div>
 
           {uploadType === 'file' ? (
-            <div key="upload-file-wrapper" className="space-y-3.5 bg-neutral-900/40 p-4 rounded-xl border border-neutral-800">
+            <div key="upload-file-wrapper" className="space-y-3.5 bg-[var(--yt-bg-elev)]/40 p-4 rounded-xl border border-[var(--yt-border)]">
               {/* Select Video file input */}
               <div className="space-y-1.5 flex-1">
-                <label className="text-xs text-gray-300 font-black flex items-center gap-1.5">
+                <label className="text-xs text-[var(--yt-text)] font-black flex items-center gap-1.5">
                   <FileVideo className="w-4 h-4 text-red-500" />
                   <span>ملف الفيديو (.MP4 أو .mov) *</span>
                 </label>
@@ -353,7 +353,7 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
                       videoEl.src = URL.createObjectURL(file);
                     }
                   }}
-                  className="w-full text-xs text-gray-400 file:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer"
+                  className="w-full text-xs text-[var(--yt-text-2)] file:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer"
                 />
                 {videoFile && (
                   <span className="text-[10px] text-green-500 font-bold block">
@@ -364,7 +364,7 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
 
               {/* Select Thumbnail Image file input */}
               <div className="space-y-1.5 flex-1">
-                <label className="text-xs text-gray-300 font-black flex items-center gap-1.5">
+                <label className="text-xs text-[var(--yt-text)] font-black flex items-center gap-1.5">
                   <ImageIcon className="w-4 h-4 text-red-500" />
                   <span>صورة الغلاف (Thumbnail Image)</span>
                 </label>
@@ -377,7 +377,7 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
                       setThumbnailFile(e.target.files[0]);
                     }
                   }}
-                  className="w-full text-xs text-gray-400 file:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-neutral-800 file:text-white hover:file:bg-neutral-700 cursor-pointer"
+                  className="w-full text-xs text-[var(--yt-text-2)] file:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[var(--yt-chip-hover)] file:text-white hover:file:bg-[var(--yt-chip-hover)] cursor-pointer"
                 />
                 {thumbnailFile && (
                   <span className="text-[10px] text-green-500 font-bold block">
@@ -387,10 +387,10 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
               </div>
             </div>
           ) : uploadType === 'url' ? (
-            <div key="upload-url-wrapper" className="space-y-3.5 bg-[#121212]/50 p-4 rounded-xl border border-neutral-800/80">
+            <div key="upload-url-wrapper" className="space-y-3.5 bg-[var(--yt-bg-elev)]/50 p-4 rounded-xl border border-[var(--yt-border)]">
               {/* Preset buttons */}
               <div className="space-y-1">
-                <span className="text-[10px] text-gray-500 font-bold">قوالب الفيدوهات الجاهزة التجريبية:</span>
+                <span className="text-[10px] text-[var(--yt-text-2)] font-bold">قوالب الفيدوهات الجاهزة التجريبية:</span>
                 <div className="flex gap-2">
                   {SAMPLE_MP4S.map((tmpl, index) => (
                     <button
@@ -401,8 +401,8 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
                         setThumbUrl(tmpl.thumb);
                         if (!title) setTitle(tmpl.name.replace(/🚗|🏔️/, ''));
                       }}
-                      className={`text-[10px] bg-neutral-900 border px-2 py-1 rounded-md transition-colors ${
-                        videoUrl === tmpl.src ? 'border-red-500 text-red-400' : 'border-neutral-800 text-gray-400'
+                      className={`text-[10px] bg-[var(--yt-bg-elev)] border px-2 py-1 rounded-md transition-colors ${
+                        videoUrl === tmpl.src ? 'border-red-500 text-red-400' : 'border-[var(--yt-border)] text-[var(--yt-text-2)]'
                       }`}
                     >
                       بث {index + 1}
@@ -413,7 +413,7 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
 
               {/* URL streams inputs */}
               <div className="space-y-1">
-                <label className="text-xs text-gray-400 font-bold block">رابط بث الفيديو المباشر (Direct Video Stream URL)</label>
+                <label className="text-xs text-[var(--yt-text-2)] font-bold block">رابط بث الفيديو المباشر (Direct Video Stream URL)</label>
                 <input
                   key="url-video-input-element"
                   type="url"
@@ -446,20 +446,20 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
                       videoEl.src = newUrl;
                     }
                   }}
-                  className="w-full bg-[#1b1b1b] border border-neutral-800 focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
+                  className="w-full bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
                   dir="ltr"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-gray-400 font-bold block">رابط صورة الغلاف (Banner Image URL)</label>
+                <label className="text-xs text-[var(--yt-text-2)] font-bold block">رابط صورة الغلاف (Banner Image URL)</label>
                 <input
                   key="url-thumb-input-element"
                   type="url"
                   placeholder="https://example.com/banner.jpg"
                   value={thumbUrl || ''}
                   onChange={(e) => setThumbUrl(e.target.value)}
-                  className="w-full bg-[#1b1b1b] border border-neutral-800 focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
+                  className="w-full bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
                   dir="ltr"
                 />
               </div>
@@ -474,19 +474,19 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
                     placeholder="https://www.youtube.com/watch?v=..."
                     value={ytInputUrl}
                     onChange={(e) => setYtInputUrl(e.target.value)}
-                    className="flex-1 bg-[#1b1b1b] border border-neutral-800 focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
+                    className="flex-1 bg-[var(--yt-bg-elev)] border border-[var(--yt-border)] focus:border-red-600 rounded-lg px-3 py-2 text-xs font-mono text-left text-white focus:outline-none"
                     dir="ltr"
                   />
                   <button
                     type="button"
                     disabled={fetchingYt}
                     onClick={handleFetchYoutube}
-                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shrink-0 disabled:bg-neutral-800"
+                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shrink-0 disabled:bg-[var(--yt-chip-hover)]"
                   >
                     {fetchingYt ? 'جاري السحب...' : 'تحميل واستدعاء تلقائي ⚡'}
                   </button>
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1">
+                <p className="text-[10px] text-[var(--yt-text-2)] mt-1">
                   ألصق رابط الفيديو من يوتيوب واضغط "استدعاء". سيقوم الخادم بسحب الفيديو وتخزينه في قاعدة البيانات محلياً لضمان سرعة التشغيل!
                 </p>
               </div>
@@ -496,7 +496,7 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
                   <div>✓ تم استيراد الفيديو بنجاح: {getYouTubeId(videoUrl)}</div>
                   <div className="flex items-center gap-2">
                     {thumbUrl && (
-                      <img src={thumbUrl || undefined} className="w-16 h-10 object-cover rounded border border-neutral-800" alt="" referrerPolicy="no-referrer" />
+                      <img src={thumbUrl || undefined} className="w-16 h-10 object-cover rounded border border-[var(--yt-border)]" alt="" referrerPolicy="no-referrer" />
                     )}
                     <div className="truncate flex-1">
                       <strong>المشغل:</strong> محاكي يوتيوب الذكي سيعرض البث المباشر فور التشغيل!
@@ -512,7 +512,7 @@ export default function UploadModal({ onClose, onSave, currentUser }: UploadModa
             <button
               type="submit"
               disabled={uploading}
-              className="w-full bg-red-600 hover:bg-red-700 disabled:bg-neutral-800 text-white font-black py-3 rounded-xl hover:shadow-lg hover:shadow-red-500/10 transition-all font-sans cursor-pointer flex items-center justify-center gap-2 text-sm shadow-md"
+              className="w-full bg-red-600 hover:bg-red-700 disabled:bg-[var(--yt-chip-hover)] text-white font-black py-3 rounded-xl hover:shadow-lg hover:shadow-red-500/10 transition-all font-sans cursor-pointer flex items-center justify-center gap-2 text-sm shadow-md"
             >
               {uploading ? (
                 <>
