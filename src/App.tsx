@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { WifiOff, Search, Sparkles, Plus, AlertTriangle, Play, Flame, Heart, Download, Zap, RefreshCw, CheckCircle, Home, User, ArrowRight, MoreVertical, BellRing, ChevronDown, Users, Bookmark, History } from 'lucide-react';
 import { Video, DownloadedItem, ActiveTab } from './types';
+import { motion, AnimatePresence } from 'motion/react';
+import SettingsView from './components/SettingsView';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import VideoCard from './components/VideoCard';
@@ -406,18 +408,25 @@ export default function App() {
   const completeDownloadsCount = downloadsList.filter(d => d.status === 'completed').length;
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] text-white flex flex-col font-sans relative selection:bg-red-600 selection:text-white" id="main-layout-root">
+    <div className="min-h-screen bg-[var(--yt-bg)] text-[var(--yt-text)] flex flex-col font-sans relative" id="main-layout-root">
       
       {/* Dynamic Toast Notification popup */}
+      <AnimatePresence>
       {notification && (
-        <div 
-          className="fixed bottom-6 right-6 z-55 bg-neutral-900 border-r-4 border-red-500 text-white px-5 py-4 rounded-xl shadow-2xl max-w-sm flex items-center gap-3 animate-slide-in text-right font-medium"
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.97 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          className="fixed bottom-6 right-6 z-[60] bg-[var(--yt-bg-elev)] text-[var(--yt-text)] px-5 py-3.5 rounded-xl max-w-sm flex items-center gap-3 text-right font-medium"
+          style={{ boxShadow: 'var(--yt-shadow)' }}
           id="toast-notification"
         >
-          <Zap className="w-5 h-5 text-amber-400 shrink-0 animate-bounce" />
+          <Zap className="w-5 h-5 text-[var(--yt-red)] shrink-0" />
           <span className="text-sm leading-snug">{notification}</span>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Upload Video Modal overlay overlay */}
       {showUploadModal && (
@@ -489,12 +498,20 @@ export default function App() {
             }
           }}
           isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
           downloadCount={completeDownloadsCount}
         />
 
         {/* Main Content View Frame */}
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden min-h-[calc(100vh-3.5rem)]" id="main-content-canvas">
-          
+        <main className="flex-1 px-4 md:px-6 pt-4 overflow-x-hidden min-h-[calc(100vh-3.5rem)]" id="main-content-canvas">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedVideo ? `watch-${selectedVideo.id}` : selectedChannel ? `channel-${selectedChannel}` : `tab-${activeTab}`}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.28, ease: [0.2, 0, 0, 1] }}
+            >
           {/* A. If a video is SELECTED to play (Detail view context) */}
           {selectedVideo ? (
             <div className="space-y-4">
@@ -504,7 +521,7 @@ export default function App() {
                   const newUrl = window.location.origin + window.location.pathname;
                   window.history.pushState({ path: newUrl }, '', newUrl);
                 }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#1f1f1f] hover:bg-[#2b2b2b] text-gray-300 font-bold text-xs rounded-lg transition-colors border border-gray-800"
+                className="inline-flex items-center gap-2 px-4 py-1.5 bg-[var(--yt-chip)] hover:bg-[#2b2b2b] text-[var(--yt-text)] font-bold text-xs rounded-lg transition-colors border border-[var(--yt-border)]"
               >
                 <span>← العودة لقسم {activeTab === 'home' ? 'الرئيسية' : 'المكتبة'}</span>
               </button>
@@ -536,18 +553,18 @@ export default function App() {
               {/* Header Bar */}
               <div className="flex items-center justify-between py-3 px-4 sticky top-0 bg-[#0f0f0f]/95 backdrop-blur z-20 border-b border-neutral-900 md:border-none">
                 <div className="flex items-center gap-4 shrink-0">
-                  <button className="hover:bg-neutral-800 p-1.5 rounded-full transition-colors cursor-pointer">
-                    <MoreVertical className="w-6 h-6 text-white" />
+                  <button className="hover:bg-[var(--yt-chip-hover)] p-1.5 rounded-full transition-colors cursor-pointer">
+                    <MoreVertical className="w-6 h-6 text-[var(--yt-text)]" />
                   </button>
-                  <button className="hover:bg-neutral-800 p-1.5 rounded-full transition-colors cursor-pointer">
-                    <Search className="w-6 h-6 text-white" />
+                  <button className="hover:bg-[var(--yt-chip-hover)] p-1.5 rounded-full transition-colors cursor-pointer">
+                    <Search className="w-6 h-6 text-[var(--yt-text)]" />
                   </button>
                 </div>
                 <button
                   onClick={() => setSelectedChannel(null)}
-                  className="hover:bg-neutral-800 p-1.5 rounded-full transition-colors cursor-pointer shrink-0"
+                  className="hover:bg-[var(--yt-chip-hover)] p-1.5 rounded-full transition-colors cursor-pointer shrink-0"
                 >
-                  <ArrowRight className="w-6 h-6 text-white" />
+                  <ArrowRight className="w-6 h-6 text-[var(--yt-text)]" />
                 </button>
               </div>
 
@@ -555,11 +572,11 @@ export default function App() {
               <div className="px-4 md:px-8 mt-2 max-w-5xl mx-auto">
                 <div className="flex items-center gap-4">
                   <div className="flex-1 flex flex-col justify-center gap-0.5">
-                     <h2 className="text-2xl sm:text-[26px] font-bold text-white leading-tight">{selectedChannel}</h2>
-                     <span className="text-[13px] text-gray-400 mt-1" dir="ltr">
+                     <h2 className="text-2xl sm:text-[26px] font-bold text-[var(--yt-text)] leading-tight">{selectedChannel}</h2>
+                     <span className="text-[13px] text-[var(--yt-text-2)] mt-1" dir="ltr">
                        @{selectedChannel?.toLowerCase().replace(/\s+/g, '')}
                      </span>
-                     <span className="text-[13px] text-gray-400 mt-0.5 whitespace-nowrap">
+                     <span className="text-[13px] text-[var(--yt-text-2)] mt-0.5 whitespace-nowrap">
                        {videosList.filter(v => v.channelName === selectedChannel).length} فيديو
                      </span>
                   </div>
@@ -569,7 +586,7 @@ export default function App() {
                 </div>
 
                 {/* Description */}
-                <p className="mt-4 text-[13px] text-gray-300 leading-relaxed text-right line-clamp-2">
+                <p className="mt-4 text-[13px] text-[var(--yt-text)] leading-relaxed text-right line-clamp-2">
                   مرحباً بك في قناة {selectedChannel}! تابع أحدث الفيديوهات المنشورة هنا أولاً بأول.
                 </p>
 
@@ -577,44 +594,44 @@ export default function App() {
                 <div className="flex items-center gap-2 mt-5">
                    <button 
                      onClick={() => handleUpdateChannelSubscription(selectedChannel || '', !subscriptions.includes(selectedChannel || ''), '')}
-                     className={`flex-[2] ${subscriptions.includes(selectedChannel || '') ? 'bg-[#272727] hover:bg-[#3f3f3f] text-white' : 'bg-white hover:bg-gray-200 text-black'} py-2 rounded-full text-[13px] font-bold flex justify-center items-center gap-2 transition-colors cursor-pointer h-9 shrink-0`}
+                     className={`flex-[2] ${subscriptions.includes(selectedChannel || '') ? 'bg-[var(--yt-chip)] hover:bg-[#3f3f3f] text-[var(--yt-text)]' : 'bg-white hover:bg-gray-200 text-black'} py-2 rounded-full text-[13px] font-bold flex justify-center items-center gap-2 transition-colors cursor-pointer h-9 shrink-0`}
                    >
                      {subscriptions.includes(selectedChannel || '') ? (
                        <>
-                         <ChevronDown className="w-4 h-4 text-white" />
+                         <ChevronDown className="w-4 h-4 text-[var(--yt-text)]" />
                          <span>تم الاشتراك</span>
-                         <BellRing className="w-4 h-4 text-white" />
+                         <BellRing className="w-4 h-4 text-[var(--yt-text)]" />
                        </>
                      ) : (
                        <span>اشتراك</span>
                      )}
                    </button>
-                   <button className="flex-1 bg-[#272727] hover:bg-[#3f3f3f] py-2 rounded-full text-[13px] font-bold text-white flex justify-center items-center gap-2 transition-colors cursor-pointer h-9 shrink-0">
-                     <Users className="w-5 h-5 text-white" />
+                   <button className="flex-1 bg-[var(--yt-chip)] hover:bg-[#3f3f3f] py-2 rounded-full text-[13px] font-bold text-[var(--yt-text)] flex justify-center items-center gap-2 transition-colors cursor-pointer h-9 shrink-0">
+                     <Users className="w-5 h-5 text-[var(--yt-text)]" />
                      <span>المنتدى</span>
                    </button>
                 </div>
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center gap-6 mt-6 border-b border-neutral-800 px-4 md:px-8 overflow-x-auto scrollbar-none max-w-5xl mx-auto">
-                <button className="pb-3 text-sm font-bold text-white border-b-2 border-white whitespace-nowrap shrink-0 px-1">الفيديوهات</button>
-                <button className="pb-3 text-sm font-bold text-gray-400 whitespace-nowrap shrink-0 hover:text-gray-200 px-1">Shorts</button>
-                <button className="pb-3 text-sm font-bold text-gray-400 whitespace-nowrap shrink-0 hover:text-gray-200 px-1">قوائم التشغيل</button>
-                <button className="pb-3 text-sm font-bold text-gray-400 whitespace-nowrap shrink-0 hover:text-gray-200 px-1">المنشورات</button>
+              <div className="flex items-center gap-6 mt-6 border-b border-[var(--yt-border)] px-4 md:px-8 overflow-x-auto scrollbar-none max-w-5xl mx-auto">
+                <button className="pb-3 text-sm font-bold text-[var(--yt-text)] border-b-2 border-white whitespace-nowrap shrink-0 px-1">الفيديوهات</button>
+                <button className="pb-3 text-sm font-bold text-[var(--yt-text-2)] whitespace-nowrap shrink-0 hover:text-gray-200 px-1">Shorts</button>
+                <button className="pb-3 text-sm font-bold text-[var(--yt-text-2)] whitespace-nowrap shrink-0 hover:text-gray-200 px-1">قوائم التشغيل</button>
+                <button className="pb-3 text-sm font-bold text-[var(--yt-text-2)] whitespace-nowrap shrink-0 hover:text-gray-200 px-1">المنشورات</button>
               </div>
 
               {/* Filters */}
               <div className="flex items-center gap-2 mt-4 px-4 md:px-8 max-w-5xl mx-auto">
                 <button className="bg-white text-black px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer shrink-0">الأحدث</button>
-                <button className="bg-[#272727] text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-[#3f3f3f] shrink-0 border border-transparent">الرائجة</button>
-                <button className="bg-[#272727] text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-[#3f3f3f] shrink-0 border border-transparent">الأقدم</button>
+                <button className="bg-[var(--yt-chip)] text-[var(--yt-text)] px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-[#3f3f3f] shrink-0 border border-transparent">الرائجة</button>
+                <button className="bg-[var(--yt-chip)] text-[var(--yt-text)] px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-[#3f3f3f] shrink-0 border border-transparent">الأقدم</button>
               </div>
 
               {/* Horizontal List of Videos */}
                <div className="mt-4 px-0 max-w-5xl mx-auto flex flex-col gap-0 pb-10">
                   {videosList.filter(v => v.channelName === selectedChannel).length === 0 ? (
-                    <div className="py-12 text-center text-sm text-gray-400 rounded-2xl w-full">
+                    <div className="py-12 text-center text-sm text-[var(--yt-text-2)] rounded-2xl w-full">
                       لا توجد فيديوهات بعد.
                     </div>
                   ) : (
@@ -622,22 +639,22 @@ export default function App() {
                       <div 
                         key={vid.id} 
                         onClick={() => handleSelectVideoToPlay(vid)}
-                        className="flex items-start gap-3 w-full cursor-pointer active:bg-neutral-900 transition-colors py-2 px-3 group"
+                        className="flex items-start gap-3 w-full cursor-pointer active:bg-[var(--yt-bg-elev)] transition-colors py-2 px-3 group"
                       >
-                         <div className="relative w-40 h-[90px] sm:w-[200px] sm:h-[113px] shrink-0 rounded-lg overflow-hidden bg-neutral-900 shadow-md">
+                         <div className="relative w-40 h-[90px] sm:w-[200px] sm:h-[113px] shrink-0 rounded-lg overflow-hidden bg-[var(--yt-bg-elev)] shadow-md">
                            <img src={vid.thumbnail || undefined} className="w-full h-full object-cover" referrerPolicy="no-referrer" alt="" />
                            <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[11px] text-white font-mono font-bold">
                              {vid.duration}
                            </div>
                          </div>
                          <div className="flex-1 min-w-0 flex flex-col text-right h-[90px] sm:h-[113px] justify-start py-0.5 relative">
-                           <h3 className="text-[13px] sm:text-base font-medium text-white line-clamp-2 leading-snug group-hover:text-red-400 transition-colors pl-6 mb-1">
+                           <h3 className="text-[13px] sm:text-base font-medium text-[var(--yt-text)] line-clamp-2 leading-snug group-hover:text-[var(--yt-red)] transition-colors pl-6 mb-1">
                              {vid.title}
                            </h3>
-                           <button className="absolute left-0 top-0 text-white shrink-0 p-1 opacity-70 hover:opacity-100 hover:bg-neutral-800 rounded-full" onClick={(e) => {e.stopPropagation();}}>
+                           <button className="absolute left-0 top-0 text-[var(--yt-text)] shrink-0 p-1 opacity-70 hover:opacity-100 hover:bg-[var(--yt-chip-hover)] rounded-full" onClick={(e) => {e.stopPropagation();}}>
                              <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
                            </button>
-                           <div className="text-[11px] sm:text-[13px] text-gray-400 mt-0 flex items-center gap-1 font-medium flex-wrap">
+                           <div className="text-[11px] sm:text-[13px] text-[var(--yt-text-2)] mt-0 flex items-center gap-1 font-medium flex-wrap">
                               <span>{vid.views || '2.1 ألف'} مشاهدة</span>
                               <span>•</span>
                               <span>{vid.uploadDate || 'قبل 4 ساعات'}</span>
@@ -654,20 +671,20 @@ export default function App() {
               {activeTab === 'home' && (
                 <div className="space-y-6" id="home-view">
                   {/* Category Pills Slider */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1" id="categories-slider">
+                  <div className="flex items-center gap-3 overflow-x-auto pb-3 scrollbar-none -mx-1 px-1" id="categories-slider">
                     {CATEGORIES.map((cat) => (
-                      <button
+                      <motion.button
                         key={cat}
+                        layout
+                        whileTap={{ scale: 0.94 }}
                         onClick={() => setActiveCategory(cat)}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 cursor-pointer ${
-                          activeCategory === cat
-                            ? 'bg-white text-[#0f0f0f]'
-                            : 'bg-[#272727] text-white hover:bg-[#3f3f3f]'
+                        className={`yt-chip px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 cursor-pointer whitespace-nowrap ${
+                          activeCategory === cat ? 'yt-chip-active' : ''
                         }`}
                         id={`category-pill-${cat}`}
                       >
                         {cat}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
 
@@ -676,7 +693,7 @@ export default function App() {
                     <div className="flex flex-col items-center justify-center py-20 text-center space-y-3" id="no-videos-empty">
                       <Search className="w-10 h-10 text-red-500 animate-pulse" />
                       <h3 className="text-lg font-bold">لم نجد أي فيديوهات مطابقة</h3>
-                      <p className="text-sm text-gray-400">حاول البحث باستخدام كلمة مفتاحية أخرى أو تصفية فئة بديلة.</p>
+                      <p className="text-sm text-[var(--yt-text-2)]">حاول البحث باستخدام كلمة مفتاحية أخرى أو تصفية فئة بديلة.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -714,10 +731,10 @@ export default function App() {
               {activeTab === 'subscriptions' && (
                 <div className="space-y-6" id="subscriptions-view">
                   {/* Subscriptions Horizontal list of channels */}
-                  <div className="bg-[#121212] p-4 rounded-xl border border-[#272727] space-y-3">
-                    <span className="text-[11px] text-gray-500 font-bold block">القنوات المشترك بها من قاعدة البيانات</span>
+                  <div className="bg-[var(--yt-bg-elev)] p-4 rounded-xl border border-[var(--yt-border)] space-y-3">
+                    <span className="text-[11px] text-[var(--yt-text-2)] font-bold block">القنوات المشترك بها من قاعدة البيانات</span>
                     {subscriptions.length === 0 ? (
-                      <div className="text-center py-6 text-gray-400 text-xs">
+                      <div className="text-center py-6 text-[var(--yt-text-2)] text-xs">
                         لم تشترك بأي قناة حتى الآن.
                       </div>
                     ) : (
@@ -731,7 +748,7 @@ export default function App() {
                               className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group text-center block"
                               title={`فتح قناة ${channel.channelName}`}
                             >
-                              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-red-500/10 group-hover:border-red-600 transition-all bg-neutral-900 object-cover active:scale-95 duration-100">
+                              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-red-500/10 group-hover:border-red-600 transition-all bg-[var(--yt-bg-elev)] object-cover active:scale-95 duration-100">
                                 <img 
                                   src={channel.channelAvatar || undefined} 
                                   className="w-full h-full object-cover animate-fade-in" 
@@ -740,7 +757,7 @@ export default function App() {
                                   onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60'; }}
                                 />
                               </div>
-                              <span className="text-[10px] text-gray-400 group-hover:text-white line-clamp-1 max-w-[70px] font-bold">
+                              <span className="text-[10px] text-[var(--yt-text-2)] group-hover:text-[var(--yt-text)] line-clamp-1 max-w-[70px] font-bold">
                                 {channel.channelName}
                               </span>
                             </div>
@@ -758,7 +775,7 @@ export default function App() {
 
                   {/* Regular Feed Grid */}
                   {subscriptions.length === 0 ? (
-                    <div className="text-center py-20 text-gray-400 text-sm">
+                    <div className="text-center py-20 text-[var(--yt-text-2)] text-sm">
                       ليس لديك أية اشتراكات حالياً لعرض المحتوى الخاص بها.
                     </div>
                   ) : (
@@ -799,13 +816,13 @@ export default function App() {
 
               {activeTab === 'history' && (
                 <div className="space-y-6" id="history-view">
-                  <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                  <div className="flex items-center justify-between border-b border-[var(--yt-border)] pb-3">
                     <h2 className="text-xl font-bold">سجل المشاهدة الأخير</h2>
-                    <span className="text-xs text-gray-400">يتم ترتيبها بحسب الأحدث مشاهدة</span>
+                    <span className="text-xs text-[var(--yt-text-2)]">يتم ترتيبها بحسب الأحدث مشاهدة</span>
                   </div>
 
                   {historyIds.length === 0 ? (
-                    <div className="text-center py-20 text-gray-400 text-sm">
+                    <div className="text-center py-20 text-[var(--yt-text-2)] text-sm">
                       سجلك فارغ تماماً. الفيديوهات التي تشاهدها ستظهر هنا تلقائياً لسرعة العثور عليها مجدداً.
                     </div>
                   ) : (
@@ -831,7 +848,7 @@ export default function App() {
 
               {activeTab === 'liked' && (
                 <div className="space-y-6" id="liked-view">
-                  <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                  <div className="flex items-center justify-between border-b border-[var(--yt-border)] pb-3">
                     <h2 className="text-xl font-bold">الفيديوهات التي أعجبتني</h2>
                     <span className="text-xs text-red-400 font-bold flex items-center gap-1">
                       <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500" />
@@ -840,7 +857,7 @@ export default function App() {
                   </div>
 
                   {likedVideoIds.length === 0 ? (
-                    <div className="text-center py-20 text-gray-400 text-sm">
+                    <div className="text-center py-20 text-[var(--yt-text-2)] text-sm">
                       لم تضع أي إعجاب بالقلب على أي فيديو بعد تفاعل الآن بالحب!
                     </div>
                   ) : (
@@ -873,7 +890,7 @@ export default function App() {
                       <span>الفيديوهات المحملة أوفلاين ({completeDownloadsCount})</span>
                     </h2>
                     {downloadsList.length === 0 ? (
-                      <div className="p-6 bg-[#161616] text-sm text-gray-400 rounded-2xl">
+                      <div className="p-6 bg-[var(--yt-bg-elev)] text-sm text-[var(--yt-text-2)] rounded-2xl">
                         لم يتم تخزين أي فيديوهات بعد. حملها من الرئيسية لتظهر لتشغيلها والإنترنت مقطوع.
                       </div>
                     ) : (
@@ -882,12 +899,12 @@ export default function App() {
                           <div 
                              key={item.id} 
                              onClick={() => handleSelectVideoToPlay(item.video)}
-                             className="bg-[#121212] p-3 rounded-xl border border-[#232323] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
+                             className="bg-[var(--yt-bg-elev)] p-3 rounded-xl border border-[var(--yt-border)] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
                           >
                             <img src={item.video.thumbnail || undefined} className="w-16 rounded-md aspect-video object-cover" alt="" referrerPolicy="no-referrer" />
                             <div>
-                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-red-400">{item.video.title}</h4>
-                              <p className="text-[10px] text-gray-500 mt-1">{item.fileSize}</p>
+                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-[var(--yt-red)]">{item.video.title}</h4>
+                              <p className="text-[10px] text-[var(--yt-text-2)] mt-1">{item.fileSize}</p>
                             </div>
                           </div>
                         ))}
@@ -897,12 +914,12 @@ export default function App() {
 
                   {/* Part 2: Uploaded Videos segment */}
                   <div className="space-y-3">
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--yt-text)]">
                       <Plus className="w-5 h-5 text-red-500 bg-red-500/10 p-0.5 rounded-full border border-red-500/20" />
                       <span>قناتك الخاصة وفيديوهاتك المرفوعة</span>
                     </h2>
                     {videosList.filter(v => v.id.toString().startsWith('custom-')).length === 0 ? (
-                      <div className="p-6 bg-[#161616] text-sm text-gray-400 rounded-2xl flex items-center justify-between">
+                      <div className="p-6 bg-[var(--yt-bg-elev)] text-sm text-[var(--yt-text-2)] rounded-2xl flex items-center justify-between">
                         <span>لم تقم برفع أي فيديو خاص بك حتى الآن هل تود تجربة ذلك؟</span>
                         <button 
                           onClick={() => {
@@ -924,12 +941,12 @@ export default function App() {
                           <div 
                             key={vid.id} 
                             onClick={() => handleSelectVideoToPlay(vid)}
-                            className="bg-[#121212] p-3 rounded-xl border border-[#232323] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
+                            className="bg-[var(--yt-bg-elev)] p-3 rounded-xl border border-[var(--yt-border)] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
                           >
                             <img src={vid.thumbnail || undefined} className="w-16 rounded-md aspect-video object-cover" alt="" referrerPolicy="no-referrer" />
                             <div>
-                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-red-400">{vid.title}</h4>
-                              <p className="text-[10px] text-gray-500 mt-1">{vid.category}</p>
+                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-[var(--yt-red)]">{vid.title}</h4>
+                              <p className="text-[10px] text-[var(--yt-text-2)] mt-1">{vid.category}</p>
                             </div>
                           </div>
                         ))}
@@ -939,12 +956,12 @@ export default function App() {
 
                   {/* Part 3: Saved Videos */}
                   <div className="space-y-3">
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--yt-text)]">
                       <Bookmark className="w-5 h-5 text-red-500" />
                       <span>المحفوظات (المشاهدة لاحقاً) ({savedVideoIds.length})</span>
                     </h2>
                     {savedVideoIds.length === 0 ? (
-                      <div className="p-6 bg-[#161616] text-sm text-gray-400 rounded-2xl">
+                      <div className="p-6 bg-[var(--yt-bg-elev)] text-sm text-[var(--yt-text-2)] rounded-2xl">
                         لم تقم بحفظ أي فيديوهات لمشاهدتها لاحقاً.
                       </div>
                     ) : (
@@ -953,12 +970,12 @@ export default function App() {
                           <div 
                             key={vid.id} 
                             onClick={() => handleSelectVideoToPlay(vid)}
-                            className="bg-[#121212] p-3 rounded-xl border border-[#232323] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
+                            className="bg-[var(--yt-bg-elev)] p-3 rounded-xl border border-[var(--yt-border)] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
                           >
                             <img src={vid.thumbnail || undefined} className="w-16 rounded-md aspect-video object-cover" alt="" referrerPolicy="no-referrer" />
                             <div className="flex-1">
-                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-red-400">{vid.title}</h4>
-                              <p className="text-[10px] text-gray-500 mt-1">{vid.channelName}</p>
+                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-[var(--yt-red)]">{vid.title}</h4>
+                              <p className="text-[10px] text-[var(--yt-text-2)] mt-1">{vid.channelName}</p>
                             </div>
                           </div>
                         ))}
@@ -969,7 +986,7 @@ export default function App() {
                   {/* Part 4: Liked Videos Summary */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                      <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--yt-text)]">
                         <Heart className="w-5 h-5 text-red-500" />
                         <span>فيديوهات أعجبتني ({likedVideoIds.length})</span>
                       </h2>
@@ -978,7 +995,7 @@ export default function App() {
                       </button>
                     </div>
                     {likedVideoIds.length === 0 ? (
-                      <div className="p-6 bg-[#161616] text-sm text-gray-400 rounded-2xl">
+                      <div className="p-6 bg-[var(--yt-bg-elev)] text-sm text-[var(--yt-text-2)] rounded-2xl">
                         لم تضع إعجاباً لأي فيديو بعد.
                       </div>
                     ) : (
@@ -987,12 +1004,12 @@ export default function App() {
                           <div 
                             key={vid.id} 
                             onClick={() => handleSelectVideoToPlay(vid)}
-                            className="bg-[#121212] p-3 rounded-xl border border-[#232323] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
+                            className="bg-[var(--yt-bg-elev)] p-3 rounded-xl border border-[var(--yt-border)] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
                           >
                             <img src={vid.thumbnail || undefined} className="w-16 rounded-md aspect-video object-cover" alt="" referrerPolicy="no-referrer" />
                             <div className="flex-1">
-                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-red-400">{vid.title}</h4>
-                              <p className="text-[10px] text-gray-500 mt-1">{vid.channelName}</p>
+                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-[var(--yt-red)]">{vid.title}</h4>
+                              <p className="text-[10px] text-[var(--yt-text-2)] mt-1">{vid.channelName}</p>
                             </div>
                           </div>
                         ))}
@@ -1003,7 +1020,7 @@ export default function App() {
                   {/* Part 5: History Summary */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                      <h2 className="text-xl font-bold flex items-center gap-2 text-[var(--yt-text)]">
                         <History className="w-5 h-5 text-red-500" />
                         <span>سجل المشاهدة</span>
                       </h2>
@@ -1012,7 +1029,7 @@ export default function App() {
                       </button>
                     </div>
                     {historyIds.length === 0 ? (
-                      <div className="p-6 bg-[#161616] text-sm text-gray-400 rounded-2xl">
+                      <div className="p-6 bg-[var(--yt-bg-elev)] text-sm text-[var(--yt-text-2)] rounded-2xl">
                         لا يوجد أي سجل مشاهدات.
                       </div>
                     ) : (
@@ -1021,12 +1038,12 @@ export default function App() {
                           <div 
                             key={vid.id} 
                             onClick={() => handleSelectVideoToPlay(vid)}
-                            className="bg-[#121212] p-3 rounded-xl border border-[#232323] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
+                            className="bg-[var(--yt-bg-elev)] p-3 rounded-xl border border-[var(--yt-border)] hover:shadow-lg transition-all cursor-pointer flex gap-3.5 items-center group"
                           >
                             <img src={vid.thumbnail || undefined} className="w-16 rounded-md aspect-video object-cover" alt="" referrerPolicy="no-referrer" />
                             <div className="flex-1">
-                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-red-400">{vid.title}</h4>
-                              <p className="text-[10px] text-gray-500 mt-1">{vid.channelName}</p>
+                              <h4 className="text-xs font-bold line-clamp-1 group-hover:text-[var(--yt-red)]">{vid.title}</h4>
+                              <p className="text-[10px] text-[var(--yt-text-2)] mt-1">{vid.channelName}</p>
                             </div>
                           </div>
                         ))}
@@ -1055,31 +1072,35 @@ export default function App() {
                   }}
                 />
               )}
+              {activeTab === 'settings' && (
+                <SettingsView
+                  onGoToAccount={() => setActiveTab('account')}
+                />
+              )}
             </div>
           )}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 
       {/* Styled Footer copyright block */}
-      <footer className="bg-[#0b0b0b] border-t border-[#222222] py-4 pb-20 md:pb-4 text-center text-xs text-gray-500 space-y-1 select-none flex flex-col items-center justify-center font-sans" id="app-footer">
-        <p className="flex items-center gap-1 font-bold text-gray-400">
-          YouTube Clone - 100% Database Powered © ٢٠٢٦
-        </p>
-        <p className="text-[11px] text-gray-500">
-          مطور بنظام الأوفلاين الذكي ومبني باستخدام تقنية React و IndexedDB مع قاعدة بيانات متكاملة
+      <footer className="border-t border-[var(--yt-border)] py-4 pb-20 md:pb-4 text-center text-xs text-[var(--yt-text-2)] space-y-1 select-none flex flex-col items-center justify-center font-sans" id="app-footer">
+        <p className="flex items-center gap-1 font-medium">
+          YouTLibre © ٢٠٢٦
         </p>
       </footer>
 
       {/* Mobile Bottom Navigation Bar styled identically to the official YouTube App (RTL) */}
       <div 
-        className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-[#0F0F0F] border-t border-[#272727] flex items-center justify-around z-40 px-2 pb-1 text-white" 
+        className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--yt-bg)] border-t border-[var(--yt-border)] flex items-center justify-around z-40 px-2 text-[var(--yt-text)]" 
         id="mobile-bottom-bar"
       >
         {/* الرئيسية */}
         <button 
           onClick={() => { setSelectedVideo(null); setActiveTab('home'); }}
           className={`flex flex-col items-center justify-center w-14 h-full gap-0.5 select-none ${
-            activeTab === 'home' ? 'text-white' : 'text-gray-400'
+            activeTab === 'home' ? 'text-[var(--yt-text)]' : 'text-[var(--yt-text-2)]'
           }`}
           id="m-nav-home"
         >
@@ -1091,7 +1112,7 @@ export default function App() {
         <button 
           onClick={() => { setSelectedVideo(null); setActiveTab('shorts'); }}
           className={`flex flex-col items-center justify-center w-14 h-full gap-0.5 select-none ${
-            activeTab === 'shorts' ? 'text-white' : 'text-gray-400'
+            activeTab === 'shorts' ? 'text-[var(--yt-text)]' : 'text-[var(--yt-text-2)]'
           }`}
           id="m-nav-shorts"
         >
@@ -1110,18 +1131,18 @@ export default function App() {
               setShowUploadModal(true);
             }
           }}
-          className="flex items-center justify-center w-11 h-11 bg-[#272727] active:scale-90 hover:bg-[#3f3f3f] rounded-full border border-neutral-800 transition-all"
+          className="flex items-center justify-center w-11 h-11 bg-[var(--yt-chip)] active:scale-90 hover:bg-[var(--yt-chip-hover)] rounded-full transition-all"
           title="رفع فيديو جديد"
           id="m-nav-upload"
         >
-          <Plus className="w-6 h-6 text-white" />
+          <Plus className="w-6 h-6 text-[var(--yt-text)]" />
         </button>
 
         {/* الاشتراكات */}
         <button 
           onClick={() => { setSelectedVideo(null); setActiveTab('subscriptions'); }}
           className={`flex flex-col items-center justify-center w-14 h-full gap-0.5 select-none ${
-            activeTab === 'subscriptions' ? 'text-white' : 'text-gray-400'
+            activeTab === 'subscriptions' ? 'text-[var(--yt-text)]' : 'text-[var(--yt-text-2)]'
           }`}
           id="m-nav-subs"
         >
@@ -1133,19 +1154,19 @@ export default function App() {
         <button 
           onClick={() => { setSelectedVideo(null); setActiveTab('account'); }}
           className={`flex flex-col items-center justify-center w-14 h-full gap-0.5 select-none ${
-            activeTab === 'account' ? 'text-white' : 'text-gray-400'
+            activeTab === 'account' ? 'text-[var(--yt-text)]' : 'text-[var(--yt-text-2)]'
           }`}
           id="m-nav-you"
         >
             {currentUser?.username ? (
-            <div className={`w-5 h-5 rounded-full bg-[#cc1111] overflow-hidden flex items-center justify-center text-[9px] font-black text-white hover:scale-105 border ${
-              activeTab === 'account' ? 'border-white' : 'border-transparent'
+            <div className={`w-5 h-5 rounded-full bg-[var(--yt-red)] overflow-hidden flex items-center justify-center text-[9px] font-black text-[var(--yt-text)] hover:scale-105 border ${
+              activeTab === 'account' ? 'border-[var(--yt-text)]' : 'border-transparent'
             }`}>
               {currentUser.username.substring(0, 2).toUpperCase()}
             </div>
           ) : currentUser ? (
-            <div className={`w-5 h-5 rounded-full bg-[#cc1111] overflow-hidden flex items-center justify-center text-[9px] font-black text-white hover:scale-105 border ${
-              activeTab === 'account' ? 'border-white' : 'border-transparent'
+            <div className={`w-5 h-5 rounded-full bg-[var(--yt-red)] overflow-hidden flex items-center justify-center text-[9px] font-black text-[var(--yt-text)] hover:scale-105 border ${
+              activeTab === 'account' ? 'border-[var(--yt-text)]' : 'border-transparent'
             }`}>
               ??
             </div>
