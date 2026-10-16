@@ -3,33 +3,44 @@ import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut
 } from 'firebase/auth';
 
-// Simple Turso-based authentication (works without Firebase)
+// Simple Turso-based authentication (email + password, verified server-side with scrypt)
 const API_BASE = '/api/v1';
 
 const SIMPLE_AUTH_KEY = 'youtube_auth_user';
 
-// Simple registration - creates user directly in Turso
-export const simpleTursoRegister = async (email, username) => {
+// Register — creates the user in Turso (fails if the email is already taken)
+export const simpleTursoRegister = async (email, username, password) => {
   try {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanName = String(username || '').trim();
+    if (!cleanEmail || !cleanName) throw new Error('يرجى إكمال البريد الإلكتروني واسم المستخدم');
+    if (!password || String(password).length < 6) throw new Error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+
+    // Email must be unique — no duplicate rows
+    const existing = await fetch(`${API_BASE}/users/by-email?email=${encodeURIComponent(cleanEmail)}`);
+    if (existing.ok) {
+      throw new Error('📧 هذا البريد الإلكتروني مسجل بالفعل. سجل الدخول بدلاً من إنشاء حساب جديد.');
+    }
+
     // Generate a simple UID
     const uid = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Create user in Turso database
+
+    // Create user in Turso database (password is hashed server-side with scrypt, never stored raw)
     const response = await fetch(`${API_BASE}/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid, username, email })
+      body: JSON.stringify({ uid, username: cleanName, email: cleanEmail, password: String(password) })
     });
-    
+
     if (!response.ok) {
-      const err = await response.json();
+      const err = await response.json().catch(() => ({}));
       throw new Error(err.error || 'فشل في إنشاء الحساب');
     }
-    
+
     // Store auth in localStorage
-    const userData = { uid, username, email };
+    const userData = { uid, username: cleanName, email: cleanEmail };
     localStorage.setItem(SIMPLE_AUTH_KEY, JSON.stringify(userData));
-    
+
     return userData;
   } catch (e: any) {
     console.error('Register error:', e);
@@ -37,30 +48,29 @@ export const simpleTursoRegister = async (email, username) => {
   }
 };
 
-// Simple login - authenticates against Turso
+// Login — verifies email+password against the server (real check, no fake sessions)
 export const simpleTursoLogin = async (email, password) => {
   try {
-    // For simple auth, we create a session-like experience
-    // First, try to find user in Turso by email
-    // Since we can't query by email directly, we'll simulate login
-    
-    // Generate a consistent UID based on email
-    const uid = `user_${btoa(email).replace(/[^a-zA-Z0-9]/g, '').substr(0, 20)}_${Date.now()}`;
-    const username = email.split('@')[0];
-    
-    // Try to create/get user in Turso
-    const response = await fetch(`${API_BASE}/users`, {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    if (!cleanEmail || !password) throw new Error('أدخل البريد الإلكتروني وكلمة المرور');
+
+    const response = await fetch(`${API_BASE}/users/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid, username, email })
+      body: JSON.stringify({ email: cleanEmail, password: String(password) })
     });
-    
-    // Even if user exists, we'll get success (upsert)
-    
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || '🔐 خطأ في بيانات الدخول');
+    }
+
+    const profile = await response.json();
+
     // Store auth in localStorage
-    const userData = { uid, username, email };
+    const userData = { uid: profile.uid, username: profile.username, email: profile.email };
     localStorage.setItem(SIMPLE_AUTH_KEY, JSON.stringify(userData));
-    
+
     return userData;
   } catch (e: any) {
     console.error('Login error:', e);
@@ -182,7 +192,9 @@ export const updateUserProfile = async (uid, data, avatarFile, bannerFile) => {
     formData.append('username', data.username);
     formData.append('description', data.description);
     if (avatarFile) formData.append('avatar', avatarFile);
+    else if (data.avatarUrl) formData.append('avatarUrl', data.avatarUrl);
     if (bannerFile) formData.append('banner', bannerFile);
+    else if (data.bannerUrl) formData.append('bannerUrl', data.bannerUrl);
 
     const res = await fetch(`${API_BASE}/users/${uid}/update`, {
       method: 'POST',

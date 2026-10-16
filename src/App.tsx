@@ -29,6 +29,16 @@ import {
 
 const CATEGORIES = ['الكل', 'تقنية', 'سفر', 'طبيعة', 'ألعاب', 'طبخ'];
 
+interface CurrentUser {
+  user_id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  banner?: string;
+  description?: string;
+  [key: string]: any;
+}
+
 export default function App() {
   // Navigation & Sizing
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -49,7 +59,7 @@ export default function App() {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   
   // Custom User Profile State (Live Authentication)
-  const [currentUser, setCurrentUser] = useState<{ user_id: number; username: string; email: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   // Modals & Downloads State
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -102,7 +112,7 @@ export default function App() {
             }
 
             if (profile) {
-              setCurrentUser({ user_id: user.uid as any, username: profile.username, email: profile.email, ...profile });
+              setCurrentUser({ user_id: user.uid, username: profile.username, email: profile.email, ...profile });
               const subs = await getUserSubscriptions(user.uid);
               setSubscriptions(subs);
             }
@@ -356,8 +366,19 @@ export default function App() {
   // Filter regular videos (dismiss shorts in home grid)
   const handleDeleteVideoFromFeed = async (videoId: string) => {
     try {
-      const res = await fetch(`/api/v1/videos/${videoId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('فشل الحذف من الخادم');
+      if (!currentUser) {
+        showToast('⚠️ يرجى تسجيل الدخول أولاً لحذف الفيديو.');
+        return;
+      }
+      const res = await fetch(`/api/v1/videos/${videoId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: currentUser.user_id })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'فشل الحذف من الخادم');
+      }
       
       setVideosList(prev => prev.filter(v => v.id !== videoId));
       showToast('🗑️ تم حذف الفيديو بنجاح من قاعدة البيانات للجميع!');
@@ -417,8 +438,7 @@ export default function App() {
         }}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onOpenUpload={() => {
-          const termUser = localStorage.getItem('youtube_token');
-          if (!termUser) {
+          if (!currentUser) {
             showToast('⚠️ يرجى تسجيل الدخول أولاً كصانع محتوى لتستطيع النشر بقاعدة البيانات!');
             setActiveTab('account');
             setSelectedChannel(null);
@@ -536,12 +556,11 @@ export default function App() {
                 <div className="flex items-center gap-4">
                   <div className="flex-1 flex flex-col justify-center gap-0.5">
                      <h2 className="text-2xl sm:text-[26px] font-bold text-white leading-tight">{selectedChannel}</h2>
-                     <span className="text-lg text-white font-bold" dir="ltr">Abdellatif Said</span>
-                     <span className="text-[13px] text-gray-400 mt-1">
-                       @{selectedChannel?.toLowerCase().replace(/\s+/g, '')}A
+                     <span className="text-[13px] text-gray-400 mt-1" dir="ltr">
+                       @{selectedChannel?.toLowerCase().replace(/\s+/g, '')}
                      </span>
                      <span className="text-[13px] text-gray-400 mt-0.5 whitespace-nowrap">
-                       {videosList.find(v => v.channelName === selectedChannel)?.subscribers || '58 ألف'} مشترك • {videosList.filter(v => v.channelName === selectedChannel).length} فيديو
+                       {videosList.filter(v => v.channelName === selectedChannel).length} فيديو
                      </span>
                   </div>
                   <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full overflow-hidden shrink-0 ml-2">
@@ -551,13 +570,8 @@ export default function App() {
 
                 {/* Description */}
                 <p className="mt-4 text-[13px] text-gray-300 leading-relaxed text-right line-clamp-2">
-                  مرحباً بك في قناة {selectedChannel}! هنا تجد كل ما تحتاجه لتطوير مهاراتك التقنية وتحقيق النجاح في عالم الإنترنت. نقدم دروساً <span className="text-white font-bold cursor-pointer">...المزيد</span>
+                  مرحباً بك في قناة {selectedChannel}! تابع أحدث الفيديوهات المنشورة هنا أولاً بأول.
                 </p>
-
-                {/* Links */}
-                <a href="#" className="inline-block mt-2 text-[13px] text-white hover:underline font-bold max-w-full truncate text-right w-full" dir="ltr">
-                  abdellatifsaid.com و 39 روابط إضافية
-                </a>
 
                 {/* Buttons Component */}
                 <div className="flex items-center gap-2 mt-5">
@@ -892,8 +906,7 @@ export default function App() {
                         <span>لم تقم برفع أي فيديو خاص بك حتى الآن هل تود تجربة ذلك؟</span>
                         <button 
                           onClick={() => {
-                            const termUser = localStorage.getItem('youtube_token');
-                            if (!termUser) {
+                            if (!currentUser) {
                               showToast('⚠️ يرجى تسجيل الدخول أولاً لتستطيع النشر بقاعدة البيانات!');
                               setActiveTab('account');
                             } else {
@@ -1089,8 +1102,7 @@ export default function App() {
         {/* Create / Upload */}
         <button 
           onClick={() => {
-            const savedToken = localStorage.getItem('youtube_token');
-            if (!savedToken) {
+            if (!currentUser) {
               setNotification('⚠️ يرجى تسجيل الدخول أولاً كصانع محتوى لتستطيع رفع الفيديوهات إلى قاعدة البيانات!');
               setTimeout(() => setNotification(null), 3500);
               setActiveTab('account');

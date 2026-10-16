@@ -3,7 +3,7 @@ export interface Comment {
   authorName: string;
   authorAvatar: string;
   text: string;
-  timestamp: string;
+  timestamp: string | number;
   likes: number;
   replies?: Comment[];
 }
@@ -25,6 +25,7 @@ export interface Video {
   isShort?: boolean;
   liked?: boolean;
   subscribed?: boolean;
+  userId?: string; // owner uid from the server
 }
 
 export interface DownloadedItem {
