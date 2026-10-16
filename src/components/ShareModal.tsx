@@ -7,6 +7,13 @@ interface ShareModalProps {
 }
 
 export default function ShareModal({ videoUrl, onClose }: ShareModalProps) {
+  // Close on Escape for standard modal UX
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const shareLinks = [
     { name: 'واتساب', icon: <MessageCircle className="w-5 h-5" />, color: 'bg-green-600', url: `https://wa.me/?text=${encodeURIComponent(videoUrl)}` },
     { name: 'تيليجرام', icon: <Send className="w-5 h-5 text-white" />, color: 'bg-blue-500', url: `https://t.me/share/url?url=${encodeURIComponent(videoUrl)}` },

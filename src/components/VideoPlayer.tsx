@@ -83,6 +83,14 @@ export default function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Initialize likes/comments when video changes
+  // Close comments drawer on Escape for standard UX
+  useEffect(() => {
+    if (!showCommentsDrawer) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowCommentsDrawer(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showCommentsDrawer]);
+
   useEffect(() => {
     // 1. Fetch Comments from Backend Database
     const loadComments = async () => {
@@ -409,6 +417,7 @@ export default function VideoPlayer({
             </div>
             
             <button
+              id="btn-subscribe-channel"
               onClick={handleSubscribe}
               className={`mr-1 px-3 py-1.5 text-[11px] font-black rounded-full transition-all active:scale-95 cursor-pointer shrink-0 ${
                 isSubscribed 

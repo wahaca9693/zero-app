@@ -11,7 +11,7 @@ import ShortsView from './components/ShortsView';
 import DownloadsView from './components/DownloadsView';
 import UploadModal from './components/UploadModal';
 import AccountView from './components/AccountView';
-import { getVideos, getUserProfile, getUserSubscriptions, getSimpleAuthUser } from './services/db';
+import { getVideos, getUserProfile, getUserSubscriptions, getSimpleAuthUser, simpleTursoLogout } from './services/db';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { 
@@ -44,10 +44,14 @@ interface CurrentUser {
 export default function App() {
   // Navigation & Sizing
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
+  );
   
   // Offline State (extremely innovative simulation)
   const [isOffline, setIsOffline] = useState(false);
+  // Real backend reachability (honest indicator — not a hardcoded "live" label)
+  const [apiOnline, setApiOnline] = useState(true);
   
   // Videos Data
   const [videosList, setVideosList] = useState<Video[]>([]);
@@ -80,6 +84,20 @@ export default function App() {
 
   // 1. Initial Load of videos, uploads, & IndexedDB databases
   useEffect(() => {
+    // Honest backend connectivity probe (drives the "database status" indicator)
+    const probeApi = async () => {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 8000);
+        const r = await fetch(`/api/v1/videos`, { signal: ctrl.signal });
+        clearTimeout(t);
+        setApiOnline(r.ok);
+      } catch {
+        setApiOnline(false);
+      }
+    };
+    probeApi();
+    const probeTimer = setInterval(probeApi, 30000);
     async function loadData() {
       try {
         const localDownloads = await getDownloads();
@@ -154,6 +172,7 @@ export default function App() {
       }
     }
     loadData();
+    return () => clearInterval(probeTimer);
   }, []);
 
   // Sync details if liked or history updates
@@ -340,9 +359,13 @@ export default function App() {
 
   const handleLogout = async () => {
     await auth.signOut();
+    simpleTursoLogout(); // clear the persisted session so reload stays logged out
     setCurrentUser(null);
+    setSubscriptions([]);
     showToast(`🚪 تم تسجيل الخروج بنجاح.`);
-    setActiveTab('home');
+    setSelectedVideo(null);
+    setSelectedChannel(null);
+    setActiveTab('account'); // land on the login form so the logout is visible
 
     // Reload default videos
     const sVideos = await getVideos();
@@ -507,10 +530,10 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedVideo ? `watch-${selectedVideo.id}` : selectedChannel ? `channel-${selectedChannel}` : `tab-${activeTab}`}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.28, ease: [0.2, 0, 0, 1] }}
+              initial={{ opacity: 0, y: 28, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -18, scale: 0.995 }}
+              transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
             >
           {/* A. If a video is SELECTED to play (Detail view context) */}
           {selectedVideo ? (
@@ -770,7 +793,11 @@ export default function App() {
                   {/* Videos title */}
                   <div className="flex items-center justify-between">
                     <h2 className="text-base font-bold">أحدث المنشورات من قنواتك المفضلة</h2>
-                    <span className="text-xs text-green-500 font-semibold">• متصل بقاعدة البيانات حياً</span>
+                    {(!isOffline && apiOnline) ? (
+                      <span className="text-xs text-green-500 font-semibold">• متصل بقاعدة البيانات حياً</span>
+                    ) : (
+                      <span className="text-xs text-[var(--yt-text-2)] font-semibold">• غير متصل — يعرض المحتوى المحلي</span>
+                    )}
                   </div>
 
                   {/* Regular Feed Grid */}
